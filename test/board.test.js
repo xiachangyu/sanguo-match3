@@ -36,6 +36,20 @@ test('applyGravity drops tiles down and nulls top', () => {
   ]);
 });
 
+test('applyGravity handles an all-null column among filled ones', () => {
+  const grid = [
+    ['兵', null, '车'],
+    ['弓', null, '枪'],
+    [null, null, '骑'],
+  ];
+  const out = board.applyGravity(grid);
+  assert.deepStrictEqual(out, [
+    [null, null, '车'],
+    ['兵', null, '枪'],
+    ['弓', null, '骑'],
+  ]);
+});
+
 test('refill replaces nulls with pool chars', () => {
   const grid = [
     [null, '弓'],

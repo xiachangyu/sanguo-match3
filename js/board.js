@@ -15,6 +15,7 @@ function isAdjacent(a, b) {
 // 加权随机抽一个字符
 function weightedPick(pool) {
   const entries = Object.entries(pool);
+  if (!entries.length) throw new Error('weightedPick: empty pool');
   let total = 0;
   for (const [, w] of entries) total += w;
   let r = Math.random() * total;
@@ -89,12 +90,16 @@ function resolveCascade(grid, pool) {
       score += match3.scoreMatch(grp, cascade);
       for (const cell of grp.cells) roundCells.push(cell);
     }
+    // In L/T/cross shapes the intersection cell may appear in multiple groups
+    // in the same round; cleared is a list of rounds, not a unique-cell set.
     cleared.push(roundCells);
     g = applyGravity(g);
     g = refill(g, pool);
     cascade++;
   }
-  return { grid: g, score, cascade, cleared };
+  // If capped, the returned grid is NOT guaranteed match-free: the 50-round
+  // safety cap was hit before the board settled.
+  return { grid: g, score, cascade, cleared, capped: cascade >= 50 };
 }
 
 module.exports = { copy, get, isAdjacent, weightedPick, createBoard, applyGravity, refill, resolveCascade };
