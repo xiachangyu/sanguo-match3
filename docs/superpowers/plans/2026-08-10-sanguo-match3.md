@@ -676,9 +676,10 @@ test('story data has 12 stories with unlock order', () => {
 });
 
 test('checkPhrasePath accepts adjacent correct-order path', () => {
+  // 修正：原棋盘 结 在(1,0)不可达，改为 (1,2)=结、(1,1)=义，路径 (0,0)(0,1)(0,2)(1,2)(1,1) = 桃园三结义
   const grid = [
     ['桃', '园', '三'],
-    ['结', '义', '兵'],
+    ['兵', '义', '结'],
   ];
   const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 1, c: 2 }, { r: 1, c: 1 }];
   const res = story.checkPhrasePath(grid, path);
