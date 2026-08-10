@@ -2186,7 +2186,7 @@ git commit -m "docs: readme and manual test checklist"
 
 ## Self-Review Notes（执行前已自查）
 
-- **Spec 覆盖**：8×8 棋盘✓ 基础字✓ 互换三消✓ 随机补字✓ 短语一笔连✓ 12 故事时间线✓ 阶梯解锁✓ 字池低概率✓ 大厅开始按钮✓ 体力(30/5/1min10)✓ 右上角预告✓ 限时达标分✓ 技能(初始+觉醒)✓ 精英模式✓ 道具4种✓ 广告(补体力/续命/给道具)✓ 分享给道具✓ 错误处理(无解洗牌/存档损坏/广告失败)✓ 模块化架构✓
+- **Spec 覆盖**：8×8 棋盘✓ 基础字✓ 互换三消✓ 随机补字✓ 短语一笔连✓ 12 故事时间线✓ 阶梯解锁✓ 字池低概率✓ 大厅开始按钮✓ 体力(30上限/5消耗/10分钟恢复1点)✓ 右上角预告✓ 限时达标分✓ 技能(初始+觉醒)✓ 精英模式✓ 道具4种✓ 广告(补体力/续命/给道具)✓ 分享给道具✓ 错误处理(无解洗牌/存档损坏/广告失败)✓ 模块化架构✓
 - **占位符**：`AD_UNITS` 的 adUnitId 为明确的配置占位（设计即如此，非计划缺失）。
 - **类型一致**：技能/道具统一返回 `{grid, cleared, score, buffs, timeDelta, timeFreeze, storyRateMult, notes}`；`resolveCascade` 返回 `{grid, score, cascade, cleared}`；`checkPhrasePath` 返回 `{storyId, chars, cells}`。各处引用一致。
 - **已知待真机确认**：`isEnded` 广告回调、`performance.now()`、Toast 文案等需真机微调。
