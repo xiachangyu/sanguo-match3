@@ -74,14 +74,10 @@ function showPropAd() {
   });
 }
 
-// 失败续命（每关限一次）
+// 失败续命（每关限一次，由 main.js 的 reviveUsed 控制，此处只负责播放广告）
 function showReviveAd() {
-  const state = storage.load();
-  if (state.daily.continueLevel >= config.AD_CONTINUE_PER_LEVEL) return Promise.resolve({ ok: false, reason: 'limit' });
   return watch(AD_UNITS.revive).then(done => {
     if (!done) return { ok: false, reason: 'cancelled' };
-    state.daily.continueLevel += 1;
-    storage.save(state);
     return { ok: true, seconds: config.AD_CONTINUE_SECONDS };
   });
 }

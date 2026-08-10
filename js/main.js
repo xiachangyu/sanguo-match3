@@ -32,6 +32,8 @@ const GAME = {
   buffs: [], // {type,value,seconds,endAt}
   pendingPath: [], // 划短语的路径
   selected: null,
+  activeProp: null, // 当前待选目标的道具：'hammer' | 'swap' | null
+  propPending: null, // swap 道具已选的第一个格
   result: null,
   reviveUsed: false,
   elapsed: 0,
@@ -72,6 +74,8 @@ function startLevel(level, mode) {
   GAME.buffs = [];
   GAME.pendingPath = [];
   GAME.selected = null;
+  GAME.activeProp = null;
+  GAME.propPending = null;
   GAME.reviveUsed = false;
   GAME.result = null;
   GAME.state = 'PLAYING';
@@ -135,7 +139,7 @@ function resolvePhrase() {
   // 4) 技能清除后的下落/连锁
   const chain = board.resolveCascade(GAME.grid, GAME.pool);
   GAME.grid = chain.grid;
-  GAME.score += chain.score;
+  GAME.score += chain.score * scoreMult();
   ensureValidMove();
   checkGoal();
 }
@@ -172,24 +176,131 @@ function ensureValidMove() {
 }
 
 // ---------- 输入 ----------
+const PROP_LABELS = { hammer: '铁锤', swap: '置换', shuffle: '洗牌', time: '加时' };
+function propLabel(id) {
+  return PROP_LABELS[id] || id;
+}
+
+function inRect(x, y, r) {
+  return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+}
+
+// 扣除道具并应用效果（含连锁）
+function consumeProp(id, res) {
+  GAME.save.props[id] -= 1;
+  storage.save(GAME.save);
+  GAME.grid = res.grid;
+  if (res.timeDelta) GAME.timeLeft += res.timeDelta;
+  const chain = board.resolveCascade(GAME.grid, GAME.pool);
+  GAME.grid = chain.grid;
+  GAME.score += chain.score * scoreMult();
+  ensureValidMove();
+  checkGoal();
+}
+
+function startNormal() {
+  const s = GAME.save;
+  if (s.stamina < config.STAMINA_COST) {
+    // 体力不足：优先看广告补
+    ads.showStaminaAd().then(r => {
+      if (!r.ok) showToast('体力不足，等待恢复或看广告');
+      GAME.save = storage.load();
+    });
+    return;
+  }
+  s.stamina -= config.STAMINA_COST;
+  s.staminaTs = Date.now();
+  storage.save(s);
+  GAME.save = s;
+  startLevel(s.currentLevel, 'normal');
+}
+
+function startElite() {
+  const s = GAME.save;
+  const e = s.eliteLevel;
+  if (s.currentLevel <= e) {
+    showToast('先通关普通第' + e + '关');
+    return;
+  }
+  if (s.stamina < config.STAMINA_COST) {
+    ads.showStaminaAd().then(r => {
+      if (!r.ok) showToast('体力不足，等待恢复或看广告');
+      GAME.save = storage.load();
+    });
+    return;
+  }
+  s.stamina -= config.STAMINA_COST;
+  s.staminaTs = Date.now();
+  storage.save(s);
+  GAME.save = s;
+  startLevel(e, 'elite');
+}
+
+// 道具栏点击：洗牌/加时立即用；锤/换进入待选（再点取消）
+function tapProp(i) {
+  const id = config.PROPS[i];
+  if (GAME.activeProp === id) {
+    GAME.activeProp = null;
+    GAME.propPending = null;
+    showToast('已取消');
+    return;
+  }
+  if (GAME.save.props[id] <= 0) { showToast('道具不足'); return; }
+  if (id === 'shuffle' || id === 'time') {
+    const res = props.use(id, { grid: GAME.grid, pool: GAME.pool });
+    consumeProp(id, res);
+  } else {
+    GAME.activeProp = id;
+    GAME.propPending = null;
+    showToast(id === 'hammer' ? '点击要砸的字块' : '点击两个相邻字块交换');
+  }
+}
+
+// 道具待选状态下点击棋盘格
+function tapCellWithProp(cell) {
+  const id = GAME.activeProp;
+  if (id === 'hammer') {
+    const res = props.use('hammer', { grid: GAME.grid, pool: GAME.pool }, cell);
+    if (!res) { showToast('无效目标'); return; }
+    GAME.activeProp = null;
+    consumeProp(id, res);
+  } else if (id === 'swap') {
+    if (!GAME.propPending) {
+      GAME.propPending = cell;
+      showToast('再点相邻的第二个字块');
+      return;
+    }
+    const res = props.use('swap', { grid: GAME.grid, pool: GAME.pool }, GAME.propPending, cell);
+    if (!res) { showToast('需相邻'); return; }
+    GAME.activeProp = null;
+    GAME.propPending = null;
+    consumeProp(id, res);
+  }
+}
+
 function onTap(tx, ty) {
   if (GAME.state === 'LOBBY') {
-    const by = H * 0.4, bh = 70;
-    if (ty >= by && ty <= by + bh) {
-      const s = GAME.save;
-      if (s.stamina < config.STAMINA_COST) {
-        // 体力不足：优先看广告补
-        ads.showStaminaAd().then(r => {
-          if (!r.ok) showToast('体力不足，等待恢复或看广告');
-          GAME.save = storage.load();
-        });
-        return;
+    const btns = ui.lobbyButtons(W, H);
+    if (inRect(tx, ty, btns.normal)) {
+      startNormal();
+    } else if (inRect(tx, ty, btns.elite)) {
+      startElite();
+    } else if (inRect(tx, ty, btns.adProp)) {
+      ads.showPropAd().then(r => {
+        if (r.ok) showToast('获得道具：' + propLabel(r.prop));
+        else showToast(r.reason === 'limit' ? '今日广告得道具已达上限' : '未完整观看');
+        GAME.save = storage.load();
+      });
+    } else if (inRect(tx, ty, btns.share)) {
+      const r = ads.showShare();
+      if (r.ok) {
+        showToast('获得道具：' + propLabel(r.prop));
+        GAME.save = storage.load();
+      } else if (r.reason === 'limit') {
+        showToast('今日已分享过');
+      } else {
+        showToast('分享不可用');
       }
-      s.stamina -= config.STAMINA_COST;
-      s.staminaTs = Date.now();
-      storage.save(s);
-      GAME.save = s;
-      startLevel(s.currentLevel, 'normal');
     }
     return;
   }
@@ -211,9 +322,19 @@ function onTap(tx, ty) {
     GAME.save = storage.load();
     return;
   }
-  // PLAYING：点击选中/交换
+  // PLAYING：先命中道具栏
+  for (let i = 0; i < config.PROPS.length; i++) {
+    if (inRect(tx, ty, ui.propBarRect(i, H))) {
+      tapProp(i);
+      return;
+    }
+  }
   const cell = cellAt(tx, ty);
   if (!cell) return;
+  if (GAME.activeProp) {
+    tapCellWithProp(cell);
+    return;
+  }
   if (GAME.selected) {
     if (board.isAdjacent(GAME.selected, cell)) {
       const g = board.swapTiles(GAME.grid, GAME.selected, cell);
@@ -222,7 +343,7 @@ function onTap(tx, ty) {
         GAME.grid = g;
         const chain = board.resolveCascade(GAME.grid, GAME.pool);
         GAME.grid = chain.grid;
-        GAME.score += chain.score;
+        GAME.score += chain.score * scoreMult();
         ensureValidMove();
         checkGoal();
       }
@@ -294,6 +415,15 @@ function render() {
       ctx.lineWidth = 3;
       const x = BOARD_X + GAME.selected.c * TILE, y = BOARD_Y + GAME.selected.r * TILE;
       ctx.strokeRect(x + 2, y + 2, TILE - 4, TILE - 4);
+    }
+    if (GAME.activeProp) {
+      const idx = config.PROPS.indexOf(GAME.activeProp);
+      if (idx >= 0) {
+        const r = ui.propBarRect(idx, H);
+        ctx.strokeStyle = '#ffca28';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+      }
     }
   } else {
     ui.drawResult(ctx, W, H, GAME.result);

@@ -98,24 +98,64 @@ function drawPropBar(ctx, props, x, y, size) {
   }
 }
 
+// 大厅按钮布局（与 main.js 命中共用）
+function lobbyButtons(w, h) {
+  return {
+    normal: { x: w / 2 - 110, y: h * 0.4, w: 220, h: 70 },
+    elite: { x: w / 2 - 110, y: h * 0.4 + 80, w: 220, h: 70 },
+    adProp: { x: 20, y: h - 100, w: 140, h: 44 },
+    share: { x: 170, y: h - 100, w: 140, h: 44 },
+  };
+}
+
+// 道具栏第 i 个格子的命中区域（与 drawPropBar 渲染一致）
+function propBarRect(i, h) {
+  const size = 46, gap = 8, x0 = 16, y0 = h - 56;
+  return { x: x0 + i * (size + gap), y: y0, w: size, h: size };
+}
+
 // 大厅
 function drawLobby(ctx, w, h, state) {
   ctx.fillStyle = '#2e7d32';
   ctx.fillRect(0, 0, w, h);
+  const btns = lobbyButtons(w, h);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 40px sans-serif';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
-  ctx.fillText('三国消消乐', w / 2, h * 0.22);
+  ctx.fillText('三国消消乐', w / 2, h * 0.2);
   ctx.font = '20px sans-serif';
-  ctx.fillText('第' + state.currentLevel + '关', w / 2, h * 0.3);
+  ctx.fillText('普通关 第' + state.currentLevel + '关', w / 2, h * 0.3);
+
+  // 普通开始
   ctx.fillStyle = '#ffca28';
-  roundRect(ctx, w / 2 - 110, h * 0.4, 220, 70, 12);
+  roundRect(ctx, btns.normal.x, btns.normal.y, btns.normal.w, btns.normal.h, 12);
   ctx.fill();
   ctx.fillStyle = '#4e342e';
   ctx.font = 'bold 28px sans-serif';
-  ctx.fillText('开始闯关', w / 2, h * 0.4 + 46);
-  drawStamina(ctx, state.stamina, 20, h - 30);
+  ctx.fillText('开始闯关', w / 2, btns.normal.y + btns.normal.h / 2);
+
+  // 精英模式
+  ctx.fillStyle = '#ff7043';
+  roundRect(ctx, btns.elite.x, btns.elite.y, btns.elite.w, btns.elite.h, 12);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText('精英模式 第' + state.eliteLevel + '关', w / 2, btns.elite.y + btns.elite.h / 2);
+
+  // 广告得道具 / 分享得道具
+  ctx.fillStyle = '#1b5e20';
+  roundRect(ctx, btns.adProp.x, btns.adProp.y, btns.adProp.w, btns.adProp.h, 10);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px sans-serif';
+  ctx.fillText('广告得道具', btns.adProp.x + btns.adProp.w / 2, btns.adProp.y + btns.adProp.h / 2);
+  ctx.fillStyle = '#1b5e20';
+  roundRect(ctx, btns.share.x, btns.share.y, btns.share.w, btns.share.h, 10);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText('分享得道具', btns.share.x + btns.share.w / 2, btns.share.y + btns.share.h / 2);
+
+  drawStamina(ctx, state.stamina, 20, h - 20);
 }
 
 // 结算
@@ -137,4 +177,4 @@ function drawResult(ctx, w, h, res) {
   ctx.fillText('点任意处返回', w / 2, h * 0.62);
 }
 
-module.exports = { drawTile, drawBoard, drawHUD, drawStamina, drawPropBar, drawLobby, drawResult, tileColor, roundRect };
+module.exports = { drawTile, drawBoard, drawHUD, drawStamina, drawPropBar, drawLobby, drawResult, tileColor, roundRect, lobbyButtons, propBarRect };
