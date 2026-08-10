@@ -43,22 +43,6 @@ function clearRandomBlocks(grid, count) {
   return { grid: g, cleared: dedupeCells(cleared) };
 }
 
-function shuffleGrid(grid) {
-  const g = grid.map(row => row.slice());
-  const cells = [];
-  for (let r = 0; r < g.length; r++) for (let c = 0; c < g[0].length; c++) cells.push({ r, c });
-  const chars = cells.map(p => g[p.r][p.c]).filter(ch => ch !== null);
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  let k = 0;
-  for (const p of cells) {
-    if (g[p.r][p.c] !== null) g[p.r][p.c] = chars[k++];
-  }
-  return g;
-}
-
 // 生成短语：把故事字按顺序放到原点的同一行（从 c=0 起），覆盖原字
 function placePhrase(grid, chars, origin) {
   const g = grid.map(row => row.slice());
@@ -139,11 +123,11 @@ const SKILLS = {
   combo10: { name: '南中归心', activate: s => ({ ...clearRandomBlocks(s.grid, 10), score: 0, timeDelta: 0, notes: '随机10处消除' }) },
   addTime10: { name: '青梅煮酒', activate: s => ({ grid: s.grid, score: 0, cleared: [], timeDelta: 10, notes: '时间+10秒' }) },
   addTime20: { name: '论尽天下', activate: s => ({ grid: s.grid, score: 0, cleared: [], timeDelta: 20, notes: '时间+20秒' }) },
-  shuffle: { name: '单骑奔袭', activate: s => ({ grid: shuffleGrid(s.grid), score: 0, cleared: [], timeDelta: 0, notes: '洗牌重排' }) },
+  shuffle: { name: '单骑奔袭', activate: s => ({ grid: board.shuffleGrid(s.grid), score: 0, cleared: [], timeDelta: 0, notes: '洗牌重排' }) },
   shuffleGenerate: {
     name: '过五关斩六将',
     activate(s) {
-      const shuffled = shuffleGrid(s.grid);
+      const shuffled = board.shuffleGrid(s.grid);
       const grid = placePhrase(shuffled, story.STORIES.qianli.chars, s.origin);
       return { grid, score: 0, cleared: [], timeDelta: 0, notes: '洗牌+生成千里走单骑' };
     },

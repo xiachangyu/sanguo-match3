@@ -37,6 +37,20 @@ test('time prop adds configured seconds', () => {
   assert.strictEqual(res.timeDelta, 10);
 });
 
+test('hammer rejects out-of-bounds or already-null cells', () => {
+  const grid = board.createBoard(4, 4, POOL);
+  assert.strictEqual(props.use('hammer', { grid, pool: POOL }, { r: 99, c: 0 }), null);
+  assert.strictEqual(props.use('hammer', { grid, pool: POOL }, { r: -1, c: 0 }), null);
+  const res = props.use('hammer', { grid, pool: POOL }, { r: 0, c: 0 });
+  assert.ok(res);
+  assert.strictEqual(props.use('hammer', { grid: res.grid, pool: POOL }, { r: 0, c: 0 }), null); // 已空
+});
+
+test('swap prop rejects same cell', () => {
+  const grid = board.createBoard(4, 4, POOL);
+  assert.strictEqual(props.use('swap', { grid, pool: POOL }, { r: 0, c: 0 }, { r: 0, c: 0 }), null);
+});
+
 function count(grid) {
   const map = {};
   for (const row of grid) for (const ch of row) map[ch] = (map[ch] || 0) + 1;

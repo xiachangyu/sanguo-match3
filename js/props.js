@@ -1,43 +1,29 @@
 const board = require('./board');
 const config = require('./config');
 
-function shuffleGrid(grid) {
-  const g = grid.map(row => row.slice());
-  const cells = [];
-  for (let r = 0; r < g.length; r++) for (let c = 0; c < g[0].length; c++) cells.push({ r, c });
-  const chars = cells.map(p => g[p.r][p.c]).filter(ch => ch !== null);
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [chars[i], chars[j]] = [chars[j], chars[i]];
-  }
-  let k = 0;
-  for (const p of cells) {
-    if (g[p.r][p.c] !== null) g[p.r][p.c] = chars[k++];
-  }
-  return g;
-}
-
-// 道具执行。state: { grid, pool }；返回 { grid, cleared, timeDelta } 或 null（参数无效）
+// 道具执行。state: { grid, pool }；返回 { grid, cleared, score, timeDelta, notes } 或 null（参数无效）
 function use(propId, state, ...args) {
   switch (propId) {
     case 'hammer': {
       const cell = args[0];
+      const rows = state.grid.length;
+      const cols = state.grid[0].length;
       if (!cell || cell.r == null || cell.c == null) return null;
+      if (cell.r < 0 || cell.r >= rows || cell.c < 0 || cell.c >= cols) return null;
+      if (state.grid[cell.r][cell.c] === null) return null;
       const grid = state.grid.map(row => row.slice());
       grid[cell.r][cell.c] = null;
-      return { grid, cleared: [cell], timeDelta: 0 };
+      return { grid, cleared: [cell], score: 0, timeDelta: 0, notes: '铁锤' };
     }
     case 'swap': {
       const a = args[0], b = args[1];
       if (!a || !b || !board.isAdjacent(a, b)) return null;
-      const grid = state.grid.map(row => row.slice());
-      [grid[a.r][a.c], grid[b.r][b.c]] = [grid[b.r][b.c], grid[a.r][a.c]];
-      return { grid, cleared: [], timeDelta: 0 };
+      return { grid: board.swapTiles(state.grid, a, b), cleared: [], score: 0, timeDelta: 0, notes: '置换' };
     }
     case 'shuffle':
-      return { grid: shuffleGrid(state.grid), cleared: [], timeDelta: 0 };
+      return { grid: board.shuffleGrid(state.grid), cleared: [], score: 0, timeDelta: 0, notes: '洗牌' };
     case 'time':
-      return { grid: state.grid, cleared: [], timeDelta: config.PROP_TIME_SECONDS };
+      return { grid: state.grid, cleared: [], score: 0, timeDelta: config.PROP_TIME_SECONDS, notes: '加时' };
     default:
       return null;
   }

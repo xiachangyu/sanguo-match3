@@ -109,4 +109,21 @@ function swapTiles(grid, a, b) {
   return out;
 }
 
-module.exports = { copy, get, isAdjacent, weightedPick, createBoard, applyGravity, refill, resolveCascade, swapTiles };
+// Fisher-Yates 洗牌：打乱非空字块位置，保持字块多重集不变（null 格保持 null）
+function shuffleGrid(grid) {
+  const g = grid.map(row => row.slice());
+  const cells = [];
+  for (let r = 0; r < g.length; r++) for (let c = 0; c < g[0].length; c++) cells.push({ r, c });
+  const chars = cells.map(p => g[p.r][p.c]).filter(ch => ch !== null);
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  let k = 0;
+  for (const p of cells) {
+    if (g[p.r][p.c] !== null) g[p.r][p.c] = chars[k++];
+  }
+  return g;
+}
+
+module.exports = { copy, get, isAdjacent, weightedPick, createBoard, applyGravity, refill, resolveCascade, swapTiles, shuffleGrid };
