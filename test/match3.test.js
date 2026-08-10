@@ -66,3 +66,28 @@ test('hasValidMove false for dead board', () => {
   ];
   assert.strictEqual(match3.hasValidMove(grid), false);
 });
+
+test('L-shape match yields two groups sharing the corner cell', () => {
+  const grid = [
+    ['兵', '兵', '兵'],
+    ['弓', '兵', '车'],
+    ['枪', '兵', '枪'],
+  ];
+  const groups = match3.findMatches(grid);
+  assert.strictEqual(groups.length, 2);
+  const rowGroup = groups.find(g => g.kind === 'row');
+  const colGroup = groups.find(g => g.kind === 'col');
+  assert.ok(rowGroup && colGroup);
+  const corner = { r: 0, c: 1 };
+  const inRow = rowGroup.cells.some(cell => cell.r === 0 && cell.c === 1);
+  const inCol = colGroup.cells.some(cell => cell.r === 0 && cell.c === 1);
+  assert.ok(inRow && inCol);
+});
+
+test('five-run row scores SCORE_MATCH5 via findMatches + scoreMatch', () => {
+  const grid = [['兵', '兵', '兵', '兵', '兵', '弓', '车', '骑']];
+  const groups = match3.findMatches(grid);
+  assert.strictEqual(groups.length, 1);
+  assert.strictEqual(groups[0].cells.length, 5);
+  assert.strictEqual(match3.scoreMatch(groups[0], 0), 100);
+});
