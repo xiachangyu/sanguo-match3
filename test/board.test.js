@@ -1,0 +1,64 @@
+const { test } = require('node:test');
+const assert = require('node:assert');
+const board = require('../js/board');
+
+const pool = { 兵: 1, 弓: 1, 车: 1, 枪: 1, 骑: 1 };
+
+test('createBoard has no initial matches and valid move', () => {
+  const match3 = require('../js/match3');
+  for (let i = 0; i < 20; i++) {
+    const grid = board.createBoard(8, 8, pool);
+    assert.strictEqual(grid.length, 8);
+    assert.strictEqual(grid[0].length, 8);
+    assert.deepStrictEqual(match3.findMatches(grid), []);
+    assert.ok(match3.hasValidMove(grid));
+  }
+});
+
+test('isAdjacent only for orthogonal neighbors', () => {
+  assert.ok(board.isAdjacent({ r: 0, c: 0 }, { r: 0, c: 1 }));
+  assert.ok(board.isAdjacent({ r: 2, c: 3 }, { r: 1, c: 3 }));
+  assert.ok(!board.isAdjacent({ r: 0, c: 0 }, { r: 1, c: 1 }));
+  assert.ok(!board.isAdjacent({ r: 0, c: 0 }, { r: 0, c: 0 }));
+});
+
+test('applyGravity drops tiles down and nulls top', () => {
+  const grid = [
+    ['兵', null],
+    [null, '弓'],
+    ['车', null],
+  ];
+  const out = board.applyGravity(grid);
+  assert.deepStrictEqual(out, [
+    [null, null],
+    ['兵', null],
+    ['车', '弓'],
+  ]);
+});
+
+test('refill replaces nulls with pool chars', () => {
+  const grid = [
+    [null, '弓'],
+    ['车', null],
+  ];
+  const out = board.refill(grid, pool);
+  assert.ok(pool[out[0][0]] !== undefined);
+  assert.strictEqual(out[0][1], '弓');
+  assert.strictEqual(out[1][0], '车');
+  assert.ok(pool[out[1][1]] !== undefined);
+});
+
+test('resolveCascade clears matches and scores cascade', () => {
+  const grid = [
+    ['兵', '兵', '兵', '弓', '车', '枪', '骑', '兵'],
+    ['弓', '车', '枪', '骑', '兵', '弓', '车', '枪'],
+  ];
+  const { grid: out, score, cascade } = board.resolveCascade(grid, pool);
+  assert.ok(score >= 30);
+  assert.ok(cascade >= 1);
+  assert.ok(match3FindMatches(out).length === 0);
+});
+
+function match3FindMatches(grid) {
+  return require('../js/match3').findMatches(grid);
+}
