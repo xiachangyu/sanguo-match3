@@ -25,6 +25,7 @@ function defaultState() {
 function normalize(state) {
   const def = defaultState();
   const merged = Object.assign(def, state);
+  if (!merged.daily) merged.daily = defaultState().daily;
   if (merged.daily.date !== today()) {
     merged.daily = { date: today(), adsStamina: 0, adsProp: 0, share: 0, continueLevel: 0 };
   }
