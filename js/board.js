@@ -102,4 +102,11 @@ function resolveCascade(grid, pool) {
   return { grid: g, score, cascade, cleared, capped: cascade >= 50 };
 }
 
-module.exports = { copy, get, isAdjacent, weightedPick, createBoard, applyGravity, refill, resolveCascade };
+// 互换两个格子，返回新棋盘（不修改原棋盘）
+function swapTiles(grid, a, b) {
+  const out = copy(grid);
+  [out[a.r][a.c], out[b.r][b.c]] = [out[b.r][b.c], out[a.r][a.c]];
+  return out;
+}
+
+module.exports = { copy, get, isAdjacent, weightedPick, createBoard, applyGravity, refill, resolveCascade, swapTiles };

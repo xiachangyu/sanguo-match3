@@ -76,3 +76,11 @@ test('resolveCascade clears matches and scores cascade', () => {
 function match3FindMatches(grid) {
   return require('../js/match3').findMatches(grid);
 }
+
+test('swapTiles returns new grid with swapped cells', () => {
+  const grid = [['兵', '弓'], ['车', '枪']];
+  const out = board.swapTiles(grid, { r: 0, c: 0 }, { r: 0, c: 1 });
+  assert.strictEqual(out[0][0], '弓');
+  assert.strictEqual(out[0][1], '兵');
+  assert.strictEqual(grid[0][0], '兵'); // 原棋盘不被修改
+});
