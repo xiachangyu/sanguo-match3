@@ -22,7 +22,8 @@ function storyLevelFor(level) {
 }
 
 function getLevelConfig(level, mode = 'normal') {
-  const storyId = storyLevelFor(level) ? storyLevelFor(level).storyId : null;
+  const milestone = storyLevelFor(level);
+  const storyId = milestone ? milestone.storyId : null;
   const target = config.NORMAL_SCORE_BASE + (level - 1) * config.NORMAL_SCORE_STEP;
   if (mode === 'elite') {
     return {

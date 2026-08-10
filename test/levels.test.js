@@ -25,6 +25,16 @@ test('getLevelConfig elite shorter time and higher target', () => {
   assert.strictEqual(c1.targetScore, 1200); // 800 * 1.5
 });
 
+test('elite config works for a non-story level and default mode is normal', () => {
+  const e3 = levels.getLevelConfig(3, 'elite');
+  assert.strictEqual(e3.storyId, null);
+  assert.strictEqual(e3.time, 40);
+  assert.strictEqual(e3.targetScore, 1650); // (800 + 2*150) * 1.5 = 1100 * 1.5 = 1650
+  const d = levels.getLevelConfig(3);
+  assert.strictEqual(d.mode, 'normal');
+  assert.strictEqual(d.time, 60);
+});
+
 test('getUnlockPreview shows next milestone after current level', () => {
   assert.deepStrictEqual(levels.getUnlockPreview(3), { level: 5, storyId: 'wenjiu' });
   assert.deepStrictEqual(levels.getUnlockPreview(40), { level: 50, storyId: 'sangu' });
