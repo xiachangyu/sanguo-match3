@@ -2,6 +2,16 @@ const board = require('./board');
 const story = require('./story');
 const config = require('./config');
 
+function dedupeCells(cells) {
+  const seen = new Set();
+  return cells.filter(p => {
+    const k = p.r + ',' + p.c;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
 // 随机清除 count 个 1×3 / 3×1 块
 function clearRandomBlocks(grid, count) {
   const rows = grid.length;
@@ -30,7 +40,7 @@ function clearRandomBlocks(grid, count) {
     cleared.push(...cells);
     placed++;
   }
-  return { grid: g, cleared };
+  return { grid: g, cleared: dedupeCells(cleared) };
 }
 
 function shuffleGrid(grid) {
@@ -120,7 +130,7 @@ const SKILLS = {
       const c = Math.min(state.origin.c, grid[0].length - 1);
       for (let cc = 0; cc < grid[0].length; cc++) { cleared.push({ r, c: cc }); grid[r][cc] = null; }
       for (let rr = 0; rr < grid.length; rr++) { cleared.push({ r: rr, c }); grid[rr][c] = null; }
-      return { grid, score: 0, cleared, timeDelta: 0, notes: '清除整行+整列' };
+      return { grid, score: 0, cleared: dedupeCells(cleared), timeDelta: 0, notes: '清除整行+整列' };
     },
   },
   combo3: { name: '三英合力', activate: s => ({ ...clearRandomBlocks(s.grid, 3), score: 0, timeDelta: 0, notes: '随机3处消除' }) },

@@ -57,3 +57,32 @@ function countChars(grid) {
   for (const row of grid) for (const ch of row) map[ch] = (map[ch] || 0) + 1;
   return map;
 }
+
+test('combo3 clears distinct 3-cell blocks', () => {
+  const grid = makeGrid();
+  const res = skills.activate('combo3', { grid, pool: POOL, origin: { r: 0, c: 0 } });
+  const cells = res.cleared;
+  assert.ok(cells.length >= 3 && cells.length <= 9);
+  assert.strictEqual(new Set(cells.map(p => p.r + ',' + p.c)).size, cells.length); // 无重复
+  for (const p of cells) assert.strictEqual(res.grid[p.r][p.c], null);
+});
+
+test('crossClear cleared cells are distinct', () => {
+  const grid = makeGrid();
+  const res = skills.activate('crossClear', { grid, pool: POOL, origin: { r: 2, c: 2 } });
+  const cells = res.cleared;
+  // 4x4 棋盘：整行4 + 整列4 - 交点1 = 7
+  assert.strictEqual(cells.length, 7);
+  assert.strictEqual(new Set(cells.map(p => p.r + ',' + p.c)).size, 7);
+});
+
+test('clearAllStory nulls only story chars', () => {
+  const grid = [
+    ['桃', '兵', '园'],
+    ['三', '弓', '结'],
+  ];
+  const res = skills.activate('clearAllStory', { grid, pool: POOL, origin: { r: 0, c: 0 } });
+  assert.strictEqual(res.grid[0][0], null); // 桃
+  assert.strictEqual(res.grid[0][1], '兵'); // 基础字保留
+  assert.strictEqual(res.grid[1][2], null); // 结
+});
