@@ -1,0 +1,10 @@
+{
+  "appid": "touristappid",
+  "projectname": "sanguo-match3",
+  "compileType": "game",
+  "libVersion": "latest",
+  "setting": {
+    "es6": true,
+    "minified": true
+  }
+}
