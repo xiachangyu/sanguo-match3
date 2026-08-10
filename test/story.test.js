@@ -53,3 +53,13 @@ test('isStoryChar works', () => {
   assert.ok(story.isStoryChar('桃'));
   assert.ok(!story.isStoryChar('兵'));
 });
+
+test('checkPhrasePath rejects out-of-bounds path cells', () => {
+  const grid = [
+    ['桃', '园', '三'],
+    ['兵', '义', '结'],
+  ];
+  // 前三格相邻且拼出 桃园三，最后一步 (0,2)→(-1,2) 相邻但越界
+  const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: -1, c: 2 }];
+  assert.strictEqual(story.checkPhrasePath(grid, path), null);
+});

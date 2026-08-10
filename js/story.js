@@ -31,6 +31,11 @@ function isStoryChar(ch) {
 // 校验一笔路径：相邻且顺序拼出某个故事短语
 function checkPhrasePath(grid, path) {
   if (!path || path.length < 2) return null;
+  const rows = grid.length;
+  const cols = grid[0].length;
+  for (const p of path) {
+    if (p.r < 0 || p.r >= rows || p.c < 0 || p.c >= cols) return null;
+  }
   for (let i = 1; i < path.length; i++) {
     if (!board.isAdjacent(path[i - 1], path[i])) return null;
   }
