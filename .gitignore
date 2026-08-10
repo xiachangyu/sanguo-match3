@@ -1,0 +1,9 @@
+# 可视化辅助产物
+.superpowers/
+
+# 微信开发者工具私有配置
+project.private.config.json
+
+# Node
+node_modules/
+npm-debug.log*
