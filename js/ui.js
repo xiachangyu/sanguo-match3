@@ -47,6 +47,7 @@ function drawHUD(ctx, opts, w) {
   // 顶部：关卡/模式/分数/时间
   ctx.fillStyle = '#4e342e';
   ctx.font = 'bold 22px sans-serif';
+  ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   const label = (opts.mode === 'elite' ? '精英 ' : '') + '第' + opts.level + '关';
   ctx.fillText(label, 16, 34);
@@ -61,7 +62,7 @@ function drawHUD(ctx, opts, w) {
     ctx.font = '13px sans-serif';
     ctx.fillStyle = '#e65100';
     ctx.textAlign = 'right';
-    ctx.fillText('第' + preview.level + '关解锁「' + story.getStory(preview.storyId).name + '」', w - 16, 58);
+    ctx.fillText('第' + preview.level + '关解锁「' + (story.getStory(preview.storyId) || { name: '' }).name + '」', w - 16, 58);
   }
 
   // 分数
@@ -74,14 +75,16 @@ function drawHUD(ctx, opts, w) {
 function drawStamina(ctx, stamina, x, y) {
   ctx.fillStyle = '#fff';
   ctx.font = '14px sans-serif';
+  ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  ctx.fillText('体力 ' + stamina + '/30', x, y);
+  ctx.fillText('体力 ' + stamina + '/' + config.STAMINA_MAX, x, y);
 }
 
 function drawPropBar(ctx, props, x, y, size) {
   const labels = ['锤', '换', '洗', '时'];
   const ids = ['hammer', 'swap', 'shuffle', 'time'];
   ctx.font = '14px sans-serif';
+  ctx.textBaseline = 'middle';
   for (let i = 0; i < ids.length; i++) {
     ctx.fillStyle = '#3e2723';
     roundRect(ctx, x + i * (size + 8), y, size, size, 6);
@@ -101,6 +104,7 @@ function drawLobby(ctx, w, h, state) {
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 40px sans-serif';
+  ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
   ctx.fillText('三国消消乐', w / 2, h * 0.22);
   ctx.font = '20px sans-serif';
@@ -120,6 +124,7 @@ function drawResult(ctx, w, h, res) {
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 34px sans-serif';
+  ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
   ctx.fillText(res.win ? '过关！' : '时间到', w / 2, h * 0.35);
   ctx.font = '22px sans-serif';
