@@ -123,7 +123,7 @@ function resolvePhrase() {
     storyId: hit.storyId,
   });
   GAME.grid = res.grid;
-  GAME.score += res.score;
+  GAME.score += res.score * scoreMult();
   applyBuffs(res);
   if (res.timeDelta) GAME.timeLeft += res.timeDelta;
   if (res.timeFreeze) GAME.freeze = res.timeFreeze;
@@ -136,6 +136,7 @@ function resolvePhrase() {
   const chain = board.resolveCascade(GAME.grid, GAME.pool);
   GAME.grid = chain.grid;
   GAME.score += chain.score;
+  ensureValidMove();
   checkGoal();
 }
 
@@ -158,6 +159,16 @@ function applyBuffs(res) {
 
 function checkGoal() {
   if (GAME.score >= GAME.target) onWin();
+}
+
+// 无解自动洗牌：棋盘无可行步时洗牌，仍无解则重生成（错误处理，见设计文档）
+function ensureValidMove() {
+  if (match3.hasValidMove(GAME.grid)) return;
+  GAME.grid = board.shuffleGrid(GAME.grid);
+  if (!match3.hasValidMove(GAME.grid)) {
+    GAME.grid = board.createBoard(config.BOARD_ROWS, config.BOARD_COLS, GAME.pool);
+  }
+  showToast('自动洗牌');
 }
 
 // ---------- 输入 ----------
@@ -212,6 +223,7 @@ function onTap(tx, ty) {
         const chain = board.resolveCascade(GAME.grid, GAME.pool);
         GAME.grid = chain.grid;
         GAME.score += chain.score;
+        ensureValidMove();
         checkGoal();
       }
       GAME.selected = null;
@@ -229,6 +241,7 @@ function onDrag(tx, ty) {
   if (!cell) return;
   const last = GAME.pendingPath[GAME.pendingPath.length - 1];
   if (!last) {
+    GAME.selected = null;
     GAME.pendingPath = [cell];
     return;
   }
@@ -309,7 +322,7 @@ function loop(ts) {
         onLose();
       }
     }
-    GAME.buffs = GAME.buffs.filter(b => b.endAt > ts);
+    GAME.buffs = GAME.buffs.filter(b => b.endAt > performance.now());
   }
   if (GAME.state === 'LOBBY') tickStamina();
   render();
