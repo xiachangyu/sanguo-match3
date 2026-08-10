@@ -1,6 +1,5 @@
 const config = require('./config');
 const storage = require('./storage');
-const story = require('./story');
 
 // 流量主后台申请后填入 adUnitId
 const AD_UNITS = {
@@ -9,29 +8,41 @@ const AD_UNITS = {
   revive: 'AD_UNIT_REVIVE_PLACEHOLDER',
 };
 
-const adCache = {};
+const adCache = {}; // unitId -> { ad, resolve: null }
 
 function getAd(unitId) {
   if (!wx.createRewardedVideoAd) return null;
   if (!adCache[unitId]) {
-    adCache[unitId] = wx.createRewardedVideoAd({ adUnitId: unitId });
-    adCache[unitId].onError(() => {
+    const ad = wx.createRewardedVideoAd({ adUnitId: unitId });
+    ad.onError(() => {
       // 加载失败：静默降级，UI 隐藏对应按钮
     });
+    ad.onClose(res => {
+      const entry = adCache[unitId];
+      if (!entry) return;
+      const resolve = entry.resolve;
+      entry.resolve = null; // 单槽：一次只服务一个 watch
+      if (resolve) resolve(res && res.isEnded === true);
+    });
+    adCache[unitId] = { ad, resolve: null };
   }
   return adCache[unitId];
 }
 
 // 播放广告，返回 Promise<boolean>：true=完整看完，false=中途退出或不可用
 function watch(unitId) {
-  const ad = getAd(unitId);
-  if (!ad) return Promise.resolve(false);
+  const entry = getAd(unitId);
+  if (!entry) return Promise.resolve(false);
+  const ad = entry.ad;
   return new Promise(resolve => {
-    ad.onClose(res => {
-      resolve(res && res.isEnded === true);
-    });
+    entry.resolve = resolve;
     ad.show().catch(() => {
-      ad.load().then(() => ad.show()).catch(() => resolve(false));
+      ad.load().then(() => ad.show()).catch(() => {
+        if (entry.resolve) {
+          entry.resolve = null;
+          resolve(false);
+        }
+      });
     });
   });
 }
@@ -57,7 +68,7 @@ function showPropAd() {
     if (!done) return { ok: false, reason: 'cancelled' };
     state.daily.adsProp += 1;
     const prop = config.PROPS[Math.floor(Math.random() * config.PROPS.length)];
-    state.props[prop] += 1;
+    state.props[prop] = (state.props[prop] || 0) + 1;
     storage.save(state);
     return { ok: true, prop };
   });
@@ -83,7 +94,7 @@ function showShare() {
   wx.shareAppMessage({ title: '来玩三国消消乐！', imageUrl: '' });
   state.daily.share += 1;
   const prop = config.PROPS[Math.floor(Math.random() * config.PROPS.length)];
-  state.props[prop] += 1;
+  state.props[prop] = (state.props[prop] || 0) + 1;
   storage.save(state);
   return { ok: true, prop };
 }
