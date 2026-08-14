@@ -56,15 +56,6 @@ function drawHUD(ctx, opts, w) {
   ctx.textAlign = 'right';
   ctx.fillText(Math.ceil(opts.timeLeft) + 's', w - 16, 34);
 
-  // 右上角解锁预告
-  const preview = levels.getUnlockPreview(opts.level);
-  if (preview) {
-    ctx.font = '13px sans-serif';
-    ctx.fillStyle = '#e65100';
-    ctx.textAlign = 'right';
-    ctx.fillText('第' + preview.level + '关解锁「' + (story.getStory(preview.storyId) || { name: '' }).name + '」', w - 16, 58);
-  }
-
   // 分数
   ctx.font = 'bold 30px sans-serif';
   ctx.fillStyle = '#fff';
@@ -126,6 +117,16 @@ function drawLobby(ctx, w, h, state) {
   ctx.fillText('三国消消乐', w / 2, h * 0.2);
   ctx.font = '20px sans-serif';
   ctx.fillText('普通关 第' + state.currentLevel + '关', w / 2, h * 0.3);
+
+  // 右上角解锁预告（下一个要解锁的故事）
+  const preview = levels.getUnlockPreview(state.currentLevel);
+  if (preview) {
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#ffca28';
+    ctx.textAlign = 'right';
+    ctx.fillText('第' + preview.level + '关解锁「' + (story.getStory(preview.storyId) || { name: '' }).name + '」', w - 16, 34);
+    ctx.textAlign = 'center';
+  }
 
   // 普通开始
   ctx.fillStyle = '#ffca28';
