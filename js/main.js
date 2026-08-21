@@ -7,6 +7,7 @@ const levels = require('./levels');
 const props = require('./props');
 const storage = require('./storage');
 const ads = require('./ads');
+const sound = require('./sound');
 const ui = require('./ui');
 
 const canvas = wx.createCanvas();
@@ -100,12 +101,14 @@ function onWin() {
     }
   }
   storage.save(save);
+  sound.win();
   GAME.result = { win: true, score: GAME.score, target: GAME.target, unlocked: cfg.storyId };
   GAME.state = 'RESULT';
   GAME.anim = null;
 }
 
 function onLose() {
+  sound.lose();
   GAME.result = { win: false, score: GAME.score, target: GAME.target };
   GAME.state = 'RESULT';
   GAME.anim = null;
@@ -115,6 +118,7 @@ function onLose() {
 function resolvePhrase() {
   const hit = story.checkPhrasePath(GAME.grid, GAME.pendingPath);
   if (!hit) return;
+  sound.phrase(); // 故事短语：五声音阶上行
   const save = GAME.save;
   const awoken = save.unlocked[hit.storyId] && save.unlocked[hit.storyId].awakened;
   const skillId = skills.getSkillId(hit.storyId, awoken);
@@ -130,6 +134,7 @@ function resolvePhrase() {
     origin: GAME.pendingPath[GAME.pendingPath.length - 1],
     storyId: hit.storyId,
   });
+  sound.skill(); // 技能触发音效
   GAME.grid = res.grid;
   GAME.score += res.score * scoreMult();
   applyBuffs(res);
@@ -191,6 +196,7 @@ function inRect(x, y, r) {
 
 // 扣除道具并应用效果（含连锁）
 function consumeProp(id, res) {
+  sound.prop();
   GAME.save.props[id] -= 1;
   storage.save(GAME.save);
   GAME.grid = res.grid;
@@ -287,8 +293,10 @@ function onTap(tx, ty) {
   if (GAME.state === 'LOBBY') {
     const btns = ui.lobbyButtons(W, H);
     if (inRect(tx, ty, btns.normal)) {
+      sound.tap();
       startNormal();
     } else if (inRect(tx, ty, btns.elite)) {
+      sound.tap();
       startElite();
     }
     return;
@@ -409,6 +417,7 @@ const ANIM = { swap: 150, swapBack: 120, clear: 160, fall: 220 };
 // 点击相邻两格：预判匹配后播放交换滑动动画（逻辑盘面暂不变，视觉上两格互换位置）
 function startSwap(a, b) {
   const swapped = board.swapTiles(GAME.grid, a, b);
+  sound.swap();
   GAME.anim = {
     type: 'swap',
     start: performance.now(),
@@ -419,9 +428,15 @@ function startSwap(a, b) {
   };
 }
 
-// 消除动画：当前盘面上匹配的格子白闪 + 缩小消失
+// 消除动画：当前盘面上匹配的格子白闪 + 缩小消失（特殊组合有专属音效）
 function startClear(cascadeLevel) {
   const groups = match3.findMatches(GAME.grid);
+  let maxLen = 0;
+  for (const grp of groups) maxLen = Math.max(maxLen, grp.cells.length);
+  if (maxLen >= 5) sound.match5();
+  else if (maxLen === 4) sound.match4();
+  else sound.match3();
+  if (cascadeLevel > 0) sound.cascade(cascadeLevel);
   const cells = [];
   const seen = new Set();
   for (const grp of groups) {
@@ -610,7 +625,11 @@ function loop(ts) {
 
 function init() {
   GAME.save = storage.load();
-  wx.onTouchStart(e => onTap(e.touches[0].clientX, e.touches[0].clientY));
+  sound.setEnabled(GAME.save.settings && GAME.save.settings.sound !== false);
+  wx.onTouchStart(e => {
+    sound.unlock(); // 首次触摸创建音频上下文
+    onTap(e.touches[0].clientX, e.touches[0].clientY);
+  });
   wx.onTouchMove(e => onDrag(e.touches[0].clientX, e.touches[0].clientY));
   wx.onTouchEnd(() => onDragEnd());
   requestAnimationFrame(loop);
