@@ -9,7 +9,7 @@ const storage = require('./storage');
 const ads = require('./ads');
 const sound = require('./sound');
 const ui = require('./ui');
-const { tile, specialOf } = require('./tile');
+const { tile, chOf, specialOf } = require('./tile');
 
 const canvas = wx.createCanvas();
 const ctx = canvas.getContext('2d');
@@ -41,12 +41,15 @@ const GAME = {
   elapsed: 0,
   lastTs: 0,
   anim: null, // 当前动画：swap | swapBack | clear | clearCells | fall
+  lastRender: 0, // LOBBY 降帧用
   // 关卡目标：score | collect | phrase
   goalType: 'score',
   goalChar: null,
   goalCount: 0,
   goalProgress: 0,
   floatTexts: [], // 得分飘字/连击反馈 {text,x,y,color,size,t0,dur}
+  particles: [], // 消除粒子 {x,y,vx,vy,color,size,t0,dur}
+  tutorial: false, // 新手引导遮罩
 };
 
 // ---------- 布局 ----------
@@ -85,6 +88,9 @@ function startLevel(level, mode) {
   GAME.goalCount = cfg.goalCount || 0;
   GAME.goalProgress = 0;
   GAME.floatTexts = [];
+  GAME.particles = [];
+  // 第 1 关首次进入显示新手引导（存档记住已看）
+  GAME.tutorial = mode === 'normal' && level === 1 && !(GAME.save.settings && GAME.save.settings.tutorialDone);
   GAME.freeze = 0;
   GAME.buffs = [];
   GAME.pendingPath = [];
@@ -313,6 +319,13 @@ function tapCellWithProp(cell) {
 
 function onTap(tx, ty) {
   if (GAME.anim) return; // 动画播放中锁定输入
+  if (GAME.tutorial) {
+    // 新手引导：点击任意处关闭（存档记住）
+    GAME.tutorial = false;
+    GAME.save.settings.tutorialDone = true;
+    storage.save(GAME.save);
+    return;
+  }
   if (GAME.state === 'LOBBY') {
     const btns = ui.lobbyButtons(W, H);
     if (inRect(tx, ty, btns.normal)) {
@@ -457,6 +470,26 @@ function pushFloat(text, x, y, color, size) {
   GAME.floatTexts.push({ text, x, y, color, size, t0: performance.now(), dur: 800 });
 }
 
+// 消除粒子：从格子中心飞散彩色碎片
+function spawnParticles(cells, colorOf) {
+  for (const c of cells) {
+    const cx = BOARD_X + (c.c + 0.5) * TILE;
+    const cy = BOARD_Y + (c.r + 0.5) * TILE;
+    const color = colorOf(c);
+    for (let i = 0; i < 3; i++) {
+      GAME.particles.push({
+        x: cx, y: cy,
+        vx: (Math.random() - 0.5) * 240,
+        vy: -Math.random() * 180 - 30,
+        color,
+        size: 3 + Math.random() * 4,
+        t0: performance.now(),
+        dur: 450 + Math.random() * 250,
+      });
+    }
+  }
+}
+
 // 消除区域中心（屏幕坐标，用于飘字）
 function cellCenter(cells) {
   let r = 0, c = 0;
@@ -519,6 +552,8 @@ function startClearMatch(cascadeLevel) {
   else if (maxLen === 4) pushFloat('好！', center.x, center.y - 26, '#ffca28', 24);
   else if (unionCount >= 5) pushFloat('神了！', center.x, center.y - 26, '#ff7043', 24);
   if (cascadeLevel >= 1) pushFloat('连击 ×' + (cascadeLevel + 1), center.x, center.y - 50, '#ff5252', 24);
+  // 粒子：按消除组字块颜色飞散
+  for (const grp of groups) spawnParticles(grp.cells, () => ui.tileColor(grp.char));
   GAME.anim = { type: 'clear', start: performance.now(), duration: ANIM.clear, groups, cells, cascadeLevel, specialCell };
 }
 
@@ -527,6 +562,7 @@ function startClearCells(cells, cascadeLevel) {
   sound.skill();
   const center = cellCenter(cells);
   pushFloat('引爆！', center.x, center.y - 26, '#ff7043', 26);
+  spawnParticles(cells, c => ui.tileColor(chOf(GAME.grid[c.r][c.c])));
   GAME.anim = { type: 'clearCells', start: performance.now(), duration: ANIM.clear, cells, cascadeLevel };
 }
 
@@ -713,6 +749,18 @@ function render() {
       ctx.fillText(f.text, f.x, f.y - p * 34);
     }
     ctx.globalAlpha = 1;
+    // 消除粒子
+    const nowP = performance.now();
+    GAME.particles = GAME.particles.filter(p => nowP - p.t0 < p.dur);
+    for (const p of GAME.particles) {
+      const dt = (nowP - p.t0) / 1000;
+      const x = p.x + p.vx * dt;
+      const y = p.y + p.vy * dt + 150 * dt * dt;
+      ctx.globalAlpha = Math.max(0, 1 - (nowP - p.t0) / p.dur);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(x - p.size / 2, y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
     ui.drawPropBar(ctx, GAME.save.props, 16, H - 56, 46);
     ui.drawPlayingAdBtns(ctx, W, H);
     ui.drawStamina(ctx, GAME.save.stamina, 20, H - 12);
@@ -730,6 +778,24 @@ function render() {
         ctx.lineWidth = 3;
         ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
       }
+    }
+    // 新手引导遮罩（第 1 关首次进入）
+    if (GAME.tutorial) {
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffd54f';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('欢迎来到三国消消乐', W / 2, H * 0.28);
+      ctx.fillStyle = '#fff';
+      ctx.font = '17px sans-serif';
+      ctx.fillText('· 点相邻两个字块交换，三连消除', W / 2, H * 0.4);
+      ctx.fillText('· 一笔划过同行/列的故事字块触发技能', W / 2, H * 0.46);
+      ctx.fillText('· 4 连生成炸弹，点击引爆', W / 2, H * 0.52);
+      ctx.font = '15px sans-serif';
+      ctx.fillStyle = '#cfd8dc';
+      ctx.fillText('点击任意处开始', W / 2, H * 0.68);
     }
   } else {
     ui.drawResult(ctx, W, H, GAME.result);
@@ -761,7 +827,15 @@ function loop(ts) {
     GAME.buffs = GAME.buffs.filter(b => b.endAt > performance.now());
     updateAnim();
   }
-  if (GAME.state === 'LOBBY') tickStamina();
+  if (GAME.state === 'LOBBY') {
+    // 大厅是静态画面：降到 ~10fps 渲染，省电省 CPU
+    if (ts - GAME.lastRender < 100) {
+      requestAnimationFrame(loop);
+      return;
+    }
+    GAME.lastRender = ts;
+    tickStamina();
+  }
   render();
   requestAnimationFrame(loop);
 }
@@ -769,6 +843,15 @@ function loop(ts) {
 function init() {
   GAME.save = storage.load();
   sound.setEnabled(GAME.save.settings && GAME.save.settings.sound !== false);
+  sound.startBgm(); // 五声音阶 BGM（首次触摸后音频上下文就绪即发声）
+  // 每日奖励：每日首次进入发放 1 个随机道具
+  if (!GAME.save.daily.rewarded) {
+    const p = config.PROPS[Math.floor(Math.random() * config.PROPS.length)];
+    GAME.save.props[p] += 1;
+    GAME.save.daily.rewarded = true;
+    storage.save(GAME.save);
+    showToast('每日奖励：' + propLabel(p) + ' ×1');
+  }
   wx.onTouchStart(e => {
     sound.unlock(); // 首次触摸创建音频上下文
     onTap(e.touches[0].clientX, e.touches[0].clientY);

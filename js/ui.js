@@ -210,12 +210,12 @@ function propBarRect(i, h) {
 }
 
 // 大厅（水墨纸卷风）
+let lobbyBgCache = null; // 背景渐变缓存（屏幕尺寸固定，避免每帧重建）
+
 function drawLobby(ctx, w, h, state) {
-  // 背景：米白宣纸渐变
-  const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, '#f5eddc');
-  bg.addColorStop(1, '#efe2c8');
-  ctx.fillStyle = bg;
+  // 背景：米白宣纸渐变（缓存复用）
+  if (!lobbyBgCache) lobbyBgCache = ctx.createLinearGradient(0, 0, 0, h);
+  ctx.fillStyle = lobbyBgCache;
   ctx.fillRect(0, 0, w, h);
 
   // 底部远山墨影（纯装饰，不响应点击）

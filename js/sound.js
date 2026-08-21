@@ -51,6 +51,27 @@ function tone(freq, delay, dur, type, gain) {
 // 中国风五声音阶（C 宫调）：宫 商 角 徵 羽
 const PENTA = [261.63, 293.66, 329.63, 392.0, 440.0];
 
+// ---------- 背景音乐（BGM）：五声音阶舒缓循环，WebAudio 合成，音量低 ----------
+let bgmTimer = null;
+let bgmIdx = 0;
+const BGM_SEQ = [261.63, 293.66, 329.63, 392.0, 440.0, 392.0, 329.63, 293.66]; // 上行再下行
+
+function startBgm() {
+  if (bgmTimer) return;
+  bgmIdx = 0;
+  bgmTimer = setInterval(() => {
+    tone(BGM_SEQ[bgmIdx % BGM_SEQ.length], 0, 0.35, 'triangle', 0.05);
+    bgmIdx++;
+  }, 460);
+}
+
+function stopBgm() {
+  if (bgmTimer) {
+    clearInterval(bgmTimer);
+    bgmTimer = null;
+  }
+}
+
 const sfx = {
   tap() { tone(700, 0, 0.07, 'triangle', 0.12); },
   swap() { tone(320, 0, 0.07, 'sine', 0.15); tone(460, 0.05, 0.08, 'sine', 0.15); },
@@ -71,6 +92,8 @@ const sfx = {
 module.exports = {
   unlock,
   setEnabled,
+  startBgm,
+  stopBgm,
   tap: sfx.tap,
   swap: sfx.swap,
   match3: sfx.match3,

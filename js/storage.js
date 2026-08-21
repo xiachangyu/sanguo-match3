@@ -15,20 +15,23 @@ function defaultState() {
     staminaTs: Date.now(),
     unlocked: {}, // storyId -> { awakened: boolean }
     props: { hammer: 0, swap: 0, shuffle: 0, time: 0 },
-    daily: { date: today(), adsStamina: 0, adsProp: 0, share: 0, continueLevel: 0 },
+    daily: { date: today(), adsStamina: 0, adsProp: 0, share: 0, continueLevel: 0, rewarded: false },
     highScores: {},
-    settings: { sound: true },
+    settings: { sound: true, tutorialDone: false },
   };
 }
 
-// 跨天自动重置每日计数
+// 跨天自动重置每日计数；旧存档缺失字段补默认（settings 深合并）
 function normalize(state) {
   const def = defaultState();
   const merged = Object.assign(def, state);
-  if (!merged.daily) merged.daily = defaultState().daily;
-  if (merged.daily.date !== today()) {
-    merged.daily = { date: today(), adsStamina: 0, adsProp: 0, share: 0, continueLevel: 0 };
+  if (!merged.daily || merged.daily.date !== today()) {
+    merged.daily = { date: today(), adsStamina: 0, adsProp: 0, share: 0, continueLevel: 0, rewarded: false };
+  } else {
+    merged.daily = Object.assign({ adsStamina: 0, adsProp: 0, share: 0, continueLevel: 0, rewarded: false }, merged.daily);
   }
+  merged.settings = Object.assign({ sound: true, tutorialDone: false }, merged.settings || {});
+  merged.props = Object.assign({ hammer: 0, swap: 0, shuffle: 0, time: 0 }, merged.props || {});
   return merged;
 }
 
