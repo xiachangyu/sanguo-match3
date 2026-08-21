@@ -28,7 +28,7 @@ function isStoryChar(ch) {
   return false;
 }
 
-// 校验一笔路径：相邻且顺序拼出某个故事短语
+// 校验一笔路径：相邻、在一条直线上，且路径字块恰好组成某个故事短语（不要求顺序）
 function checkPhrasePath(grid, path) {
   if (!path || path.length < 2) return null;
   const rows = grid.length;
@@ -39,9 +39,15 @@ function checkPhrasePath(grid, path) {
   for (let i = 1; i < path.length; i++) {
     if (!board.isAdjacent(path[i - 1], path[i])) return null;
   }
-  const word = path.map(p => grid[p.r][p.c]).join('');
+  // 必须连成一条直线（同行或同列）
+  const sameRow = path.every(p => p.r === path[0].r);
+  const sameCol = path.every(p => p.c === path[0].c);
+  if (!sameRow && !sameCol) return null;
+  // 不要求顺序：路径字块集合 == 故事字块集合（故事内无重复字，长度相等 + 全部包含即集合相等）
+  const chars = path.map(p => grid[p.r][p.c]);
+  const set = new Set(chars);
   for (const s of Object.values(STORIES)) {
-    if (word === s.chars.join('')) {
+    if (s.chars.length === chars.length && s.chars.every(ch => set.has(ch))) {
       return { storyId: s.id, chars: s.chars.slice(), cells: path.slice() };
     }
   }

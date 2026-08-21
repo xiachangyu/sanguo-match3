@@ -345,15 +345,17 @@ function onTap(tx, ty) {
   }
   if (GAME.selected) {
     if (board.isAdjacent(GAME.selected, cell)) {
-      const g = board.swapTiles(GAME.grid, GAME.selected, cell);
-      const groups = match3.findMatches(g);
+      // 先交换过去（无论是否成三连，玩家能明确看到操作生效），再判断消除
+      GAME.grid = board.swapTiles(GAME.grid, GAME.selected, cell);
+      const groups = match3.findMatches(GAME.grid);
       if (groups.length) {
-        GAME.grid = g;
         const chain = board.resolveCascade(GAME.grid, GAME.pool);
         GAME.grid = chain.grid;
         GAME.score += chain.score * scoreMult();
         ensureValidMove();
         checkGoal();
+      } else {
+        showToast('没有可消除的组合');
       }
       GAME.selected = null;
     } else {

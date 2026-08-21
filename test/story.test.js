@@ -8,15 +8,38 @@ test('story data has 12 stories with unlock order', () => {
   assert.deepStrictEqual(story.STORIES.taoyuan.chars, ['桃', '园', '三', '结', '义']);
 });
 
-test('checkPhrasePath accepts adjacent correct-order path', () => {
+test('checkPhrasePath matches story chars in any order on a straight line', () => {
+  // 一行 5 格，逆序排列「桃园三结义」→ 不要求顺序，仍命中 taoyuan
+  const grid = [
+    ['义', '结', '三', '园', '桃'],
+  ];
+  const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }, { r: 0, c: 4 }];
+  const res = story.checkPhrasePath(grid, path);
+  assert.ok(res);
+  assert.strictEqual(res.storyId, 'taoyuan');
+});
+
+test('checkPhrasePath matches correct order and vertical line too', () => {
+  const grid = [
+    ['桃'],
+    ['园'],
+    ['三'],
+    ['结'],
+    ['义'],
+  ];
+  const path = [{ r: 0, c: 0 }, { r: 1, c: 0 }, { r: 2, c: 0 }, { r: 3, c: 0 }, { r: 4, c: 0 }];
+  const res = story.checkPhrasePath(grid, path);
+  assert.ok(res);
+  assert.strictEqual(res.storyId, 'taoyuan');
+});
+
+test('checkPhrasePath rejects L-shaped (non-straight) path', () => {
   const grid = [
     ['桃', '园', '三'],
     ['兵', '义', '结'],
   ];
   const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 1, c: 2 }, { r: 1, c: 1 }];
-  const res = story.checkPhrasePath(grid, path);
-  assert.ok(res);
-  assert.strictEqual(res.storyId, 'taoyuan');
+  assert.strictEqual(story.checkPhrasePath(grid, path), null);
 });
 
 test('checkPhrasePath rejects non-adjacent path', () => {
