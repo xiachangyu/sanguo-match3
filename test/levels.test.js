@@ -12,7 +12,7 @@ test('storyLevelFor maps milestones', () => {
 
 test('getLevelConfig normal scales target and time', () => {
   const c1 = levels.getLevelConfig(1, 'normal');
-  assert.strictEqual(c1.time, 60);
+  assert.strictEqual(c1.time, 180);
   assert.strictEqual(c1.targetScore, 800);
   assert.strictEqual(c1.storyId, 'taoyuan');
   const c3 = levels.getLevelConfig(3, 'normal');
@@ -32,7 +32,7 @@ test('elite config works for a non-story level and default mode is normal', () =
   assert.strictEqual(e3.targetScore, 1650); // (800 + 2*150) * 1.5 = 1100 * 1.5 = 1650
   const d = levels.getLevelConfig(3);
   assert.strictEqual(d.mode, 'normal');
-  assert.strictEqual(d.time, 60);
+  assert.strictEqual(d.time, 180);
 });
 
 test('getUnlockPreview shows next milestone after current level', () => {
