@@ -35,10 +35,37 @@ function drawTile(ctx, x, y, size, ch) {
   ctx.fillText(ch, x + size / 2, y + size / 2 + 2);
 }
 
-function drawBoard(ctx, grid, ox, oy, size) {
+// anim（可选）：{ posMap: {'r,c': {r,c}} 覆盖绘制位置（小数坐标=滑动插值）, shrink: {'r,c': scale} 缩放, flash: Set<'r,c'> 白闪 }
+function drawBoard(ctx, grid, ox, oy, size, anim) {
   for (let r = 0; r < grid.length; r++) {
     for (let c = 0; c < grid[0].length; c++) {
-      if (grid[r][c] !== null) drawTile(ctx, ox + c * size, oy + r * size, size, grid[r][c]);
+      const ch = grid[r][c];
+      if (ch === null) continue;
+      const key = r + ',' + c;
+      let pr = r, pc = c;
+      if (anim && anim.posMap && anim.posMap[key]) {
+        pr = anim.posMap[key].r;
+        pc = anim.posMap[key].c;
+      }
+      let scale = 1, flash = false;
+      if (anim && anim.shrink && anim.shrink[key] !== undefined) scale = anim.shrink[key];
+      if (anim && anim.flash && anim.flash.has(key)) flash = true;
+      const x = ox + pc * size, y = oy + pr * size;
+      if (scale !== 1) {
+        ctx.save();
+        ctx.translate(x + size / 2, y + size / 2);
+        ctx.scale(scale, scale);
+        ctx.translate(-(x + size / 2), -(y + size / 2));
+        drawTile(ctx, x, y, size, ch);
+        ctx.restore();
+      } else {
+        drawTile(ctx, x, y, size, ch);
+      }
+      if (flash) {
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        roundRect(ctx, x + 1, y + 1, size - 2, size - 2, 6);
+        ctx.fill();
+      }
     }
   }
 }

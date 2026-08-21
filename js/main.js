@@ -38,6 +38,7 @@ const GAME = {
   reviveUsed: false,
   elapsed: 0,
   lastTs: 0,
+  anim: null, // 当前动画：swap | swapBack | clear | fall
 };
 
 // ---------- 布局 ----------
@@ -101,11 +102,13 @@ function onWin() {
   storage.save(save);
   GAME.result = { win: true, score: GAME.score, target: GAME.target, unlocked: cfg.storyId };
   GAME.state = 'RESULT';
+  GAME.anim = null;
 }
 
 function onLose() {
   GAME.result = { win: false, score: GAME.score, target: GAME.target };
   GAME.state = 'RESULT';
+  GAME.anim = null;
 }
 
 // 划短语处理
@@ -280,6 +283,7 @@ function tapCellWithProp(cell) {
 }
 
 function onTap(tx, ty) {
+  if (GAME.anim) return; // 动画播放中锁定输入
   if (GAME.state === 'LOBBY') {
     const btns = ui.lobbyButtons(W, H);
     if (inRect(tx, ty, btns.normal)) {
@@ -345,18 +349,7 @@ function onTap(tx, ty) {
   }
   if (GAME.selected) {
     if (board.isAdjacent(GAME.selected, cell)) {
-      // 先交换过去（无论是否成三连，玩家能明确看到操作生效），再判断消除
-      GAME.grid = board.swapTiles(GAME.grid, GAME.selected, cell);
-      const groups = match3.findMatches(GAME.grid);
-      if (groups.length) {
-        const chain = board.resolveCascade(GAME.grid, GAME.pool);
-        GAME.grid = chain.grid;
-        GAME.score += chain.score * scoreMult();
-        ensureValidMove();
-        checkGoal();
-      } else {
-        showToast('没有可消除的组合');
-      }
+      startSwap(GAME.selected, cell); // 播放交换滑动动画，动画结束再判定消除或回弹
       GAME.selected = null;
     } else {
       GAME.selected = cell;
@@ -367,7 +360,7 @@ function onTap(tx, ty) {
 }
 
 function onDrag(tx, ty) {
-  if (GAME.state !== 'PLAYING') return;
+  if (GAME.state !== 'PLAYING' || GAME.anim) return;
   const cell = cellAt(tx, ty);
   if (!cell) return;
   const last = GAME.pendingPath[GAME.pendingPath.length - 1];
@@ -382,7 +375,7 @@ function onDrag(tx, ty) {
 }
 
 function onDragEnd() {
-  if (GAME.state === 'PLAYING' && GAME.pendingPath.length >= 2) {
+  if (GAME.state === 'PLAYING' && !GAME.anim && GAME.pendingPath.length >= 2) {
     resolvePhrase();
   }
   GAME.pendingPath = [];
@@ -410,6 +403,150 @@ function showToast(msg) {
   toast = { msg, until: performance.now() + 1600 };
 }
 
+// ---------- 动画（消消乐式动作：滑动交换 / 无效回弹 / 消除缩放 / 下落） ----------
+const ANIM = { swap: 150, swapBack: 120, clear: 160, fall: 220 };
+
+// 点击相邻两格：预判匹配后播放交换滑动动画（逻辑盘面暂不变，视觉上两格互换位置）
+function startSwap(a, b) {
+  const swapped = board.swapTiles(GAME.grid, a, b);
+  GAME.anim = {
+    type: 'swap',
+    start: performance.now(),
+    duration: ANIM.swap,
+    a, b,
+    swapped,
+    valid: match3.findMatches(swapped).length > 0,
+  };
+}
+
+// 消除动画：当前盘面上匹配的格子白闪 + 缩小消失
+function startClear(cascadeLevel) {
+  const groups = match3.findMatches(GAME.grid);
+  const cells = [];
+  const seen = new Set();
+  for (const grp of groups) {
+    for (const c of grp.cells) {
+      const k = c.r + ',' + c.c;
+      if (!seen.has(k)) { seen.add(k); cells.push(c); }
+    }
+  }
+  GAME.anim = { type: 'clear', start: performance.now(), duration: ANIM.clear, groups, cells, cascadeLevel };
+}
+
+// 下落动画：消除后 applyGravity + refill，各格子（含补字）从原位置滑到新位置
+function startFall(fromGrid, cascadeLevel) {
+  const fallen = board.applyGravity(fromGrid);
+  const toGrid = board.refill(fallen, GAME.pool);
+  GAME.grid = toGrid;
+  GAME.anim = {
+    type: 'fall',
+    start: performance.now(),
+    duration: ANIM.fall,
+    map: buildFallMap(fromGrid, toGrid),
+    cascadeLevel,
+  };
+}
+
+// 计算下落映射：toGrid[r][c] 的内容来自 fromGrid 的哪一行；补字格返回 -1（从顶部外滑入）
+function buildFallMap(fromGrid, toGrid) {
+  const rows = fromGrid.length, cols = fromGrid[0].length;
+  const map = Array.from({ length: rows }, () => Array(cols).fill(-1));
+  for (let c = 0; c < cols; c++) {
+    const stack = [];
+    for (let r = rows - 1; r >= 0; r--) if (fromGrid[r][c] !== null) stack.push(r);
+    for (let r = rows - 1; r >= 0; r--) {
+      if (toGrid[r][c] !== null) map[r][c] = stack.length ? stack.shift() : -1;
+    }
+  }
+  return map;
+}
+
+// 每帧推进动画；动画结束触发下一步（交换→消除→下落→连锁→结算）
+function updateAnim() {
+  const anim = GAME.anim;
+  if (!anim) return;
+  const now = performance.now();
+  if (now - anim.start < anim.duration) return;
+  if (anim.type === 'swap') {
+    if (anim.valid) {
+      GAME.grid = anim.swapped;
+      startClear(0);
+    } else {
+      // 无效交换：滑回原位
+      GAME.anim = { type: 'swapBack', start: now, duration: ANIM.swapBack, a: anim.a, b: anim.b };
+    }
+  } else if (anim.type === 'swapBack') {
+    GAME.anim = null;
+  } else if (anim.type === 'clear') {
+    // 消除计分（含连锁倍率）后置 null，进入下落
+    for (const grp of anim.groups) {
+      GAME.score += match3.scoreMatch(grp, anim.cascadeLevel) * scoreMult();
+    }
+    const g = GAME.grid.map(row => row.slice());
+    for (const c of anim.cells) g[c.r][c.c] = null;
+    startFall(g, anim.cascadeLevel);
+  } else if (anim.type === 'fall') {
+    // 下落补字完成：检查连锁
+    const groups = match3.findMatches(GAME.grid);
+    if (groups.length) {
+      startClear(anim.cascadeLevel + 1);
+    } else {
+      ensureValidMove();
+      checkGoal();
+      GAME.anim = null;
+    }
+  }
+}
+
+// 根据当前动画生成绘制状态（位置插值/缩放/白闪），无动画返回 null
+function buildAnimDrawState() {
+  const anim = GAME.anim;
+  if (!anim) return null;
+  const t = Math.min(1, (performance.now() - anim.start) / anim.duration);
+  const ease = t * t * (3 - 2 * t); // smoothstep
+  if (anim.type === 'swap') {
+    const a = anim.a, b = anim.b;
+    return {
+      posMap: {
+        [a.r + ',' + a.c]: { r: a.r + (b.r - a.r) * ease, c: a.c + (b.c - a.c) * ease },
+        [b.r + ',' + b.c]: { r: b.r + (a.r - b.r) * ease, c: b.c + (a.c - b.c) * ease },
+      },
+    };
+  }
+  if (anim.type === 'swapBack') {
+    const a = anim.a, b = anim.b;
+    return {
+      posMap: {
+        [a.r + ',' + a.c]: { r: b.r + (a.r - b.r) * ease, c: b.c + (a.c - b.c) * ease },
+        [b.r + ',' + b.c]: { r: a.r + (b.r - a.r) * ease, c: a.c + (b.c - a.c) * ease },
+      },
+    };
+  }
+  if (anim.type === 'clear') {
+    const flash = new Set();
+    const shrink = {};
+    for (const c of anim.cells) {
+      const k = c.r + ',' + c.c;
+      flash.add(k);
+      shrink[k] = 1 - ease;
+    }
+    return { flash, shrink };
+  }
+  if (anim.type === 'fall') {
+    const posMap = {};
+    for (let r = 0; r < GAME.grid.length; r++) {
+      for (let c = 0; c < GAME.grid[0].length; c++) {
+        if (GAME.grid[r][c] === null) continue;
+        const from = anim.map[r][c];
+        if (from === r) continue;
+        posMap[r + ',' + c] = { r: from + (r - from) * ease, c };
+      }
+    }
+    return { posMap };
+  }
+  return null;
+}
+
 function render() {
   ctx.fillStyle = '#2e7d32';
   ctx.fillRect(0, 0, W, H);
@@ -417,7 +554,7 @@ function render() {
     ui.drawLobby(ctx, W, H, GAME.save);
   } else if (GAME.state === 'PLAYING') {
     ui.drawHUD(ctx, { level: GAME.level, mode: GAME.mode, targetScore: GAME.target, timeLeft: GAME.timeLeft, score: GAME.score }, W);
-    ui.drawBoard(ctx, GAME.grid, BOARD_X, BOARD_Y, TILE);
+    ui.drawBoard(ctx, GAME.grid, BOARD_X, BOARD_Y, TILE, buildAnimDrawState());
     ui.drawPropBar(ctx, GAME.save.props, 16, H - 56, 46);
     ui.drawPlayingAdBtns(ctx, W, H);
     ui.drawStamina(ctx, GAME.save.stamina, 20, H - 12);
@@ -464,6 +601,7 @@ function loop(ts) {
       }
     }
     GAME.buffs = GAME.buffs.filter(b => b.endAt > performance.now());
+    updateAnim();
   }
   if (GAME.state === 'LOBBY') tickStamina();
   render();
