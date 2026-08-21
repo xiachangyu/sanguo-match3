@@ -9,6 +9,7 @@ const storage = require('./storage');
 const ads = require('./ads');
 const sound = require('./sound');
 const ui = require('./ui');
+const { tile, specialOf } = require('./tile');
 
 const canvas = wx.createCanvas();
 const ctx = canvas.getContext('2d');
@@ -39,7 +40,13 @@ const GAME = {
   reviveUsed: false,
   elapsed: 0,
   lastTs: 0,
-  anim: null, // 当前动画：swap | swapBack | clear | fall
+  anim: null, // 当前动画：swap | swapBack | clear | clearCells | fall
+  // 关卡目标：score | collect | phrase
+  goalType: 'score',
+  goalChar: null,
+  goalCount: 0,
+  goalProgress: 0,
+  floatTexts: [], // 得分飘字/连击反馈 {text,x,y,color,size,t0,dur}
 };
 
 // ---------- 布局 ----------
@@ -73,6 +80,11 @@ function startLevel(level, mode) {
   GAME.score = 0;
   GAME.target = cfg.targetScore;
   GAME.timeLeft = cfg.time;
+  GAME.goalType = cfg.goalType || 'score';
+  GAME.goalChar = cfg.goalChar || null;
+  GAME.goalCount = cfg.goalCount || 0;
+  GAME.goalProgress = 0;
+  GAME.floatTexts = [];
   GAME.freeze = 0;
   GAME.buffs = [];
   GAME.pendingPath = [];
@@ -102,14 +114,14 @@ function onWin() {
   }
   storage.save(save);
   sound.win();
-  GAME.result = { win: true, score: GAME.score, target: GAME.target, unlocked: cfg.storyId };
+  GAME.result = { win: true, score: GAME.score, target: GAME.target, unlocked: cfg.storyId, goalText: goalText() };
   GAME.state = 'RESULT';
   GAME.anim = null;
 }
 
 function onLose() {
   sound.lose();
-  GAME.result = { win: false, score: GAME.score, target: GAME.target };
+  GAME.result = { win: false, score: GAME.score, target: GAME.target, goalText: goalText() };
   GAME.state = 'RESULT';
   GAME.anim = null;
 }
@@ -119,6 +131,7 @@ function resolvePhrase() {
   const hit = story.checkPhrasePath(GAME.grid, GAME.pendingPath);
   if (!hit) return;
   sound.phrase(); // 故事短语：五声音阶上行
+  if (GAME.goalType === 'phrase') GAME.goalProgress += 1;
   const save = GAME.save;
   const awoken = save.unlocked[hit.storyId] && save.unlocked[hit.storyId].awakened;
   const skillId = skills.getSkillId(hit.storyId, awoken);
@@ -171,7 +184,17 @@ function applyBuffs(res) {
 }
 
 function checkGoal() {
-  if (GAME.score >= GAME.target) onWin();
+  const done = GAME.goalType === 'collect' || GAME.goalType === 'phrase'
+    ? GAME.goalProgress >= GAME.goalCount
+    : GAME.score >= GAME.target;
+  if (done) onWin();
+}
+
+// 当前目标文案（结算界面复用）
+function goalText() {
+  if (GAME.goalType === 'collect') return '收集「' + GAME.goalChar + '」 ' + GAME.goalProgress + '/' + GAME.goalCount;
+  if (GAME.goalType === 'phrase') return '故事短语 ' + GAME.goalProgress + '/' + GAME.goalCount;
+  return '得分 ' + GAME.score + ' / ' + GAME.target;
 }
 
 // 无解自动洗牌：棋盘无可行步时洗牌，仍无解则重生成（错误处理，见设计文档）
@@ -355,6 +378,7 @@ function onTap(tx, ty) {
     tapCellWithProp(cell);
     return;
   }
+  if (detonateSpecial(cell)) return; // 点击特殊块：直接引爆
   if (GAME.selected) {
     if (board.isAdjacent(GAME.selected, cell)) {
       startSwap(GAME.selected, cell); // 播放交换滑动动画，动画结束再判定消除或回弹
@@ -428,24 +452,114 @@ function startSwap(a, b) {
   };
 }
 
-// 消除动画：当前盘面上匹配的格子白闪 + 缩小消失（特殊组合有专属音效）
-function startClear(cascadeLevel) {
+// 飘字：得分 / 连击反馈文案
+function pushFloat(text, x, y, color, size) {
+  GAME.floatTexts.push({ text, x, y, color, size, t0: performance.now(), dur: 800 });
+}
+
+// 消除区域中心（屏幕坐标，用于飘字）
+function cellCenter(cells) {
+  let r = 0, c = 0;
+  for (const p of cells) { r += p.r; c += p.c; }
+  const n = cells.length || 1;
+  return { x: BOARD_X + (c / n + 0.5) * TILE, y: BOARD_Y + (r / n + 0.5) * TILE };
+}
+
+// 特殊块生成规则：5连→全屏彩虹；4连→横/纵线炸弹（与连线方向一致）；T/L形(≥5格)→3x3炸弹
+function makeSpecialFromGroups(groups) {
+  let maxLen = 0, best = null;
+  for (const g of groups) {
+    if (g.cells.length > maxLen) { maxLen = g.cells.length; best = g; }
+  }
+  if (maxLen >= 5) return { cell: best.cells[Math.floor(best.cells.length / 2)], ch: best.char, special: 'rainbow' };
+  if (maxLen === 4) return { cell: best.cells[1], ch: best.char, special: best.kind === 'row' ? 'row' : 'col' };
+  const seen = new Set();
+  let count = 0;
+  for (const g of groups) for (const c of g.cells) {
+    const k = c.r + ',' + c.c;
+    if (!seen.has(k)) { seen.add(k); count++; }
+  }
+  if (count >= 5) {
+    return { cell: groups[0].cells[Math.floor(groups[0].cells.length / 2)], ch: groups[0].char, special: 'bomb' };
+  }
+  return null;
+}
+
+// 消除动画：匹配消除（可生成特殊块）+ 白闪缩放 + 得分飘字
+function startClearMatch(cascadeLevel) {
   const groups = match3.findMatches(GAME.grid);
+  if (!groups.length) return;
   let maxLen = 0;
   for (const grp of groups) maxLen = Math.max(maxLen, grp.cells.length);
+  const cells = [];
+  const seen = new Set();
+  for (const grp of groups) for (const c of grp.cells) {
+    const k = c.r + ',' + c.c;
+    if (!seen.has(k)) { seen.add(k); cells.push(c); }
+  }
+  const unionCount = cells.length;
+  // 生成特殊块（替换一个本应消除的格子）
+  const sp = makeSpecialFromGroups(groups);
+  let specialCell = null;
+  if (sp) {
+    const idx = cells.findIndex(c => c.r === sp.cell.r && c.c === sp.cell.c);
+    if (idx >= 0) { cells.splice(idx, 1); specialCell = sp; }
+  }
+  // 音效
   if (maxLen >= 5) sound.match5();
   else if (maxLen === 4) sound.match4();
   else sound.match3();
   if (cascadeLevel > 0) sound.cascade(cascadeLevel);
+  // 飘字：该轮得分 + 连击反馈
+  let roundScore = 0;
+  for (const grp of groups) roundScore += match3.scoreMatch(grp, cascadeLevel);
+  const center = cellCenter(cells);
+  if (roundScore > 0) pushFloat('+' + roundScore, center.x, center.y, '#ffd54f', 22);
+  if (maxLen >= 5) pushFloat('太棒了！', center.x, center.y - 26, '#ff7043', 26);
+  else if (maxLen === 4) pushFloat('好！', center.x, center.y - 26, '#ffca28', 24);
+  else if (unionCount >= 5) pushFloat('神了！', center.x, center.y - 26, '#ff7043', 24);
+  if (cascadeLevel >= 1) pushFloat('连击 ×' + (cascadeLevel + 1), center.x, center.y - 50, '#ff5252', 24);
+  GAME.anim = { type: 'clear', start: performance.now(), duration: ANIM.clear, groups, cells, cascadeLevel, specialCell };
+}
+
+// 引爆动画：直接清除指定格子（特殊块引爆用），不走匹配生成
+function startClearCells(cells, cascadeLevel) {
+  sound.skill();
+  const center = cellCenter(cells);
+  pushFloat('引爆！', center.x, center.y - 26, '#ff7043', 26);
+  GAME.anim = { type: 'clearCells', start: performance.now(), duration: ANIM.clear, cells, cascadeLevel };
+}
+
+// 特殊块引爆区域
+function specialArea(special, cell) {
+  const rows = GAME.grid.length, cols = GAME.grid[0].length;
   const cells = [];
-  const seen = new Set();
-  for (const grp of groups) {
-    for (const c of grp.cells) {
-      const k = c.r + ',' + c.c;
-      if (!seen.has(k)) { seen.add(k); cells.push(c); }
-    }
+  const add = (r, c) => {
+    if (r >= 0 && r < rows && c >= 0 && c < cols && GAME.grid[r][c] !== null) cells.push({ r, c });
+  };
+  if (special === 'row') {
+    for (let c = 0; c < cols; c++) add(cell.r, c);
+  } else if (special === 'col') {
+    for (let r = 0; r < rows; r++) add(r, cell.c);
+  } else if (special === 'bomb') {
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) add(cell.r + dr, cell.c + dc);
+  } else if (special === 'rainbow') {
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) add(r, c);
   }
-  GAME.anim = { type: 'clear', start: performance.now(), duration: ANIM.clear, groups, cells, cascadeLevel };
+  return cells;
+}
+
+// 点击特殊块 → 引爆（返回 true 表示已处理）
+function detonateSpecial(cell) {
+  const sp = specialOf(GAME.grid[cell.r][cell.c]);
+  if (!sp) return false;
+  const cells = specialArea(sp, cell);
+  if (!cells.length) {
+    GAME.anim = null;
+    return true;
+  }
+  startClearCells(cells, 0);
+  return true;
 }
 
 // 下落动画：消除后 applyGravity + refill，各格子（含补字）从原位置滑到新位置
@@ -485,7 +599,7 @@ function updateAnim() {
   if (anim.type === 'swap') {
     if (anim.valid) {
       GAME.grid = anim.swapped;
-      startClear(0);
+      startClearMatch(0);
     } else {
       // 无效交换：滑回原位
       GAME.anim = { type: 'swapBack', start: now, duration: ANIM.swapBack, a: anim.a, b: anim.b };
@@ -493,18 +607,30 @@ function updateAnim() {
   } else if (anim.type === 'swapBack') {
     GAME.anim = null;
   } else if (anim.type === 'clear') {
-    // 消除计分（含连锁倍率）后置 null，进入下落
+    // 消除计分（含连锁倍率）+ 收集目标统计，置 null 后写入生成的特殊块，进入下落
     for (const grp of anim.groups) {
       GAME.score += match3.scoreMatch(grp, anim.cascadeLevel) * scoreMult();
+      if (GAME.goalType === 'collect' && grp.char === GAME.goalChar) {
+        GAME.goalProgress += grp.cells.length;
+      }
     }
+    const g = GAME.grid.map(row => row.slice());
+    for (const c of anim.cells) g[c.r][c.c] = null;
+    if (anim.specialCell) {
+      const sc = anim.specialCell;
+      g[sc.cell.r][sc.cell.c] = tile(sc.ch, sc.special);
+    }
+    startFall(g, anim.cascadeLevel);
+  } else if (anim.type === 'clearCells') {
+    // 引爆清除：直接置 null 进入下落
     const g = GAME.grid.map(row => row.slice());
     for (const c of anim.cells) g[c.r][c.c] = null;
     startFall(g, anim.cascadeLevel);
   } else if (anim.type === 'fall') {
-    // 下落补字完成：检查连锁
+    // 下落补字完成：检查连锁（连锁中可再生成特殊块）
     const groups = match3.findMatches(GAME.grid);
     if (groups.length) {
-      startClear(anim.cascadeLevel + 1);
+      startClearMatch(anim.cascadeLevel + 1);
     } else {
       ensureValidMove();
       checkGoal();
@@ -537,7 +663,7 @@ function buildAnimDrawState() {
       },
     };
   }
-  if (anim.type === 'clear') {
+  if (anim.type === 'clear' || anim.type === 'clearCells') {
     const flash = new Set();
     const shrink = {};
     for (const c of anim.cells) {
@@ -568,8 +694,25 @@ function render() {
   if (GAME.state === 'LOBBY') {
     ui.drawLobby(ctx, W, H, GAME.save);
   } else if (GAME.state === 'PLAYING') {
-    ui.drawHUD(ctx, { level: GAME.level, mode: GAME.mode, targetScore: GAME.target, timeLeft: GAME.timeLeft, score: GAME.score }, W);
+    ui.drawHUD(ctx, {
+      level: GAME.level, mode: GAME.mode,
+      goalType: GAME.goalType, goalChar: GAME.goalChar, goalCount: GAME.goalCount, goalProgress: GAME.goalProgress,
+      targetScore: GAME.target, timeLeft: GAME.timeLeft, score: GAME.score,
+    }, W);
     ui.drawBoard(ctx, GAME.grid, BOARD_X, BOARD_Y, TILE, buildAnimDrawState());
+    // 得分飘字 / 连击反馈
+    const nowF = performance.now();
+    GAME.floatTexts = GAME.floatTexts.filter(f => nowF - f.t0 < f.dur);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const f of GAME.floatTexts) {
+      const p = (nowF - f.t0) / f.dur;
+      ctx.globalAlpha = Math.max(0, p < 0.6 ? 1 : 1 - (p - 0.6) / 0.4);
+      ctx.fillStyle = f.color;
+      ctx.font = 'bold ' + f.size + 'px sans-serif';
+      ctx.fillText(f.text, f.x, f.y - p * 34);
+    }
+    ctx.globalAlpha = 1;
     ui.drawPropBar(ctx, GAME.save.props, 16, H - 56, 46);
     ui.drawPlayingAdBtns(ctx, W, H);
     ui.drawStamina(ctx, GAME.save.stamina, 20, H - 12);

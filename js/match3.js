@@ -1,4 +1,5 @@
 const config = require('./config');
+const { chOf } = require('./tile');
 
 // 找出所有横/竖 3 连及以上分组
 function findMatches(grid) {
@@ -9,11 +10,11 @@ function findMatches(grid) {
   for (let r = 0; r < rows; r++) {
     let start = 0;
     for (let c = 1; c <= cols; c++) {
-      if (c < cols && grid[r][c] !== null && grid[r][c] === grid[r][start]) continue;
+      if (c < cols && grid[r][c] !== null && chOf(grid[r][c]) === chOf(grid[r][start])) continue;
       if (c - start >= 3 && grid[r][start] !== null) {
         const cells = [];
         for (let k = start; k < c; k++) cells.push({ r, c: k });
-        groups.push({ cells, char: grid[r][start], kind: 'row' });
+        groups.push({ cells, char: chOf(grid[r][start]), kind: 'row' });
       }
       start = c;
     }
@@ -22,11 +23,11 @@ function findMatches(grid) {
   for (let c = 0; c < cols; c++) {
     let start = 0;
     for (let r = 1; r <= rows; r++) {
-      if (r < rows && grid[r][c] !== null && grid[r][c] === grid[start][c]) continue;
+      if (r < rows && grid[r][c] !== null && chOf(grid[r][c]) === chOf(grid[start][c])) continue;
       if (r - start >= 3 && grid[start][c] !== null) {
         const cells = [];
         for (let k = start; k < r; k++) cells.push({ r: k, c });
-        groups.push({ cells, char: grid[start][c], kind: 'col' });
+        groups.push({ cells, char: chOf(grid[start][c]), kind: 'col' });
       }
       start = r;
     }
@@ -68,17 +69,17 @@ function swapCreatesMatch(grid, r1, c1, r2, c2) {
 }
 
 function cellInMatch(grid, r, c) {
-  const ch = grid[r][c];
+  const ch = chOf(grid[r][c]);
   if (ch === null) return false;
   const rows = grid.length;
   const cols = grid[0].length;
   let n = 1;
-  for (let cc = c - 1; cc >= 0 && grid[r][cc] === ch; cc--) n++;
-  for (let cc = c + 1; cc < cols && grid[r][cc] === ch; cc++) n++;
+  for (let cc = c - 1; cc >= 0 && chOf(grid[r][cc]) === ch; cc--) n++;
+  for (let cc = c + 1; cc < cols && chOf(grid[r][cc]) === ch; cc++) n++;
   if (n >= 3) return true;
   n = 1;
-  for (let rr = r - 1; rr >= 0 && grid[rr][c] === ch; rr--) n++;
-  for (let rr = r + 1; rr < rows && grid[rr][c] === ch; rr++) n++;
+  for (let rr = r - 1; rr >= 0 && chOf(grid[rr][c]) === ch; rr--) n++;
+  for (let rr = r + 1; rr < rows && chOf(grid[rr][c]) === ch; rr++) n++;
   return n >= 3;
 }
 

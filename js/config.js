@@ -16,6 +16,12 @@ module.exports = {
   NORMAL_SCORE_STEP: 150,
   ELITE_TIME: 40,
   ELITE_SCORE_MULT: 1.5,
+  // 关卡目标：普通关按 分数/收集/短语 轮换；精英关固定为分数目标
+  GOAL_TYPES: ['score', 'collect', 'phrase'],
+  COLLECT_BASE: 15,
+  COLLECT_STEP: 2,
+  PHRASE_BASE: 2,
+  PHRASE_STEP: 1,
   STAMINA_INITIAL: 30,
   STAMINA_MAX: 30,
   STAMINA_COST: 5,

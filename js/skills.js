@@ -1,6 +1,7 @@
 const board = require('./board');
 const story = require('./story');
 const config = require('./config');
+const { chOf } = require('./tile');
 
 function dedupeCells(cells) {
   const seen = new Set();
@@ -64,7 +65,7 @@ function nullColor(grid, targetChar) {
   const g = grid.map(row => row.slice());
   const cleared = [];
   for (let r = 0; r < g.length; r++) for (let c = 0; c < g[0].length; c++) {
-    if (g[r][c] === targetChar) { cleared.push({ r, c }); g[r][c] = null; }
+    if (chOf(g[r][c]) === targetChar) { cleared.push({ r, c }); g[r][c] = null; }
   }
   return { grid: g, cleared };
 }
@@ -180,7 +181,7 @@ const SKILLS = {
       const g = s.grid.map(row => row.slice());
       const cleared = [];
       for (let r = 0; r < g.length; r++) for (let c = 0; c < g[0].length; c++) {
-        if (story.isStoryChar(g[r][c])) { cleared.push({ r, c }); g[r][c] = null; }
+        if (story.isStoryChar(chOf(g[r][c]))) { cleared.push({ r, c }); g[r][c] = null; }
       }
       return { grid: g, score: 0, cleared, timeDelta: 0, notes: '清除所有故事字块' };
     },

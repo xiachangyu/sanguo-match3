@@ -19,11 +19,34 @@ test('getLevelConfig normal scales target and time', () => {
   assert.strictEqual(c3.targetScore, 1100); // 800 + (3-1)*150
 });
 
-test('getLevelConfig elite shorter time and higher target', () => {
+test('normal goal types rotate score/collect/phrase and scale counts', () => {
+  const c1 = levels.getLevelConfig(1, 'normal');
+  assert.strictEqual(c1.goalType, 'score');
+  const c2 = levels.getLevelConfig(2, 'normal');
+  assert.strictEqual(c2.goalType, 'collect');
+  assert.ok(config().BASE_TILES.includes(c2.goalChar));
+  assert.strictEqual(c2.goalCount, 15); // COLLECT_BASE + stage0*STEP
+  const c3 = levels.getLevelConfig(3, 'normal');
+  assert.strictEqual(c3.goalType, 'phrase');
+  assert.strictEqual(c3.goalCount, 2); // PHRASE_BASE + stage0*STEP
+  const c5 = levels.getLevelConfig(5, 'normal');
+  assert.strictEqual(c5.goalType, 'collect');
+  assert.strictEqual(c5.goalCount, 17); // stage1: 15 + 2
+  const c6 = levels.getLevelConfig(6, 'normal');
+  assert.strictEqual(c6.goalType, 'phrase');
+  assert.strictEqual(c6.goalCount, 3); // stage1: 2 + 1
+});
+
+test('elite keeps score goal with higher target', () => {
   const c1 = levels.getLevelConfig(1, 'elite');
+  assert.strictEqual(c1.goalType, 'score');
   assert.strictEqual(c1.time, 40);
   assert.strictEqual(c1.targetScore, 1200); // 800 * 1.5
 });
+
+function config() {
+  return require('../js/config');
+}
 
 test('elite config works for a non-story level and default mode is normal', () => {
   const e3 = levels.getLevelConfig(3, 'elite');

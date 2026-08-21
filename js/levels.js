@@ -27,12 +27,23 @@ function getLevelConfig(level, mode = 'normal') {
   const target = config.NORMAL_SCORE_BASE + (level - 1) * config.NORMAL_SCORE_STEP;
   if (mode === 'elite') {
     return {
-      level, mode: 'elite', storyId,
+      level, mode: 'elite', storyId, goalType: 'score',
       time: config.ELITE_TIME,
       targetScore: Math.round(target * config.ELITE_SCORE_MULT),
     };
   }
-  return { level, mode: 'normal', storyId, time: config.NORMAL_TIME, targetScore: target };
+  const cfg = { level, mode: 'normal', storyId, goalType: 'score', time: config.NORMAL_TIME, targetScore: target };
+  // 目标轮换：分数 → 收集某基础字 → 触发短语（按解锁阶段递增数值）
+  const cycle = config.GOAL_TYPES.length;
+  const stage = Math.floor((level - 1) / cycle);
+  cfg.goalType = config.GOAL_TYPES[(level - 1) % cycle];
+  if (cfg.goalType === 'collect') {
+    cfg.goalChar = config.BASE_TILES[(level - 1) % config.BASE_TILES.length];
+    cfg.goalCount = config.COLLECT_BASE + stage * config.COLLECT_STEP;
+  } else if (cfg.goalType === 'phrase') {
+    cfg.goalCount = config.PHRASE_BASE + stage * config.PHRASE_STEP;
+  }
+  return cfg;
 }
 
 // 右上角预告：下一个要解锁的故事

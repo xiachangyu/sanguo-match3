@@ -1,6 +1,7 @@
 const config = require('./config');
 const levels = require('./levels');
 const story = require('./story');
+const { chOf, specialOf } = require('./tile');
 
 // 字块配色：基础字按固定色，故事字用金色
 const TILE_COLORS = {
@@ -23,7 +24,12 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function drawTile(ctx, x, y, size, ch) {
+// 特殊块角标
+const SPECIAL_LABELS = { row: '横', col: '纵', bomb: '爆', rainbow: '虹' };
+
+function drawTile(ctx, x, y, size, t) {
+  const ch = chOf(t);
+  const sp = specialOf(t);
   const color = tileColor(ch);
   ctx.fillStyle = color;
   roundRect(ctx, x + 1, y + 1, size - 2, size - 2, 6);
@@ -33,6 +39,16 @@ function drawTile(ctx, x, y, size, ch) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(ch, x + size / 2, y + size / 2 + 2);
+  if (sp) {
+    // 特殊块：金色边框 + 角标
+    ctx.strokeStyle = '#ffd54f';
+    ctx.lineWidth = 2;
+    roundRect(ctx, x + 2, y + 2, size - 4, size - 4, 5);
+    ctx.stroke();
+    ctx.fillStyle = '#ffd54f';
+    ctx.font = 'bold ' + Math.floor(size * 0.3) + 'px sans-serif';
+    ctx.fillText(SPECIAL_LABELS[sp] || '★', x + size * 0.72, y + size * 0.24);
+  }
 }
 
 // anim（可选）：{ posMap: {'r,c': {r,c}} 覆盖绘制位置（小数坐标=滑动插值）, shrink: {'r,c': scale} 缩放, flash: Set<'r,c'> 白闪 }
@@ -71,7 +87,7 @@ function drawBoard(ctx, grid, ox, oy, size, anim) {
 }
 
 function drawHUD(ctx, opts, w) {
-  // 顶部：关卡/模式/分数/时间
+  // 顶部：关卡/模式/目标/时间
   ctx.fillStyle = '#4e342e';
   ctx.font = 'bold 22px sans-serif';
   ctx.textBaseline = 'middle';
@@ -79,7 +95,13 @@ function drawHUD(ctx, opts, w) {
   const label = (opts.mode === 'elite' ? '精英 ' : '') + '第' + opts.level + '关';
   ctx.fillText(label, 16, 34);
   ctx.textAlign = 'center';
-  ctx.fillText('目标 ' + opts.targetScore, w / 2, 34);
+  if (opts.goalType === 'collect') {
+    ctx.fillText('收集「' + opts.goalChar + '」 ' + opts.goalProgress + '/' + opts.goalCount, w / 2, 34);
+  } else if (opts.goalType === 'phrase') {
+    ctx.fillText('短语 ' + opts.goalProgress + '/' + opts.goalCount, w / 2, 34);
+  } else {
+    ctx.fillText('目标 ' + opts.targetScore, w / 2, 34);
+  }
   ctx.textAlign = 'right';
   ctx.fillText(Math.ceil(opts.timeLeft) + 's', w - 16, 34);
 
@@ -340,7 +362,8 @@ function drawResult(ctx, w, h, res) {
   ctx.textAlign = 'center';
   ctx.fillText(res.win ? '过关！' : '时间到', w / 2, h * 0.35);
   ctx.font = '22px sans-serif';
-  ctx.fillText('得分 ' + res.score + ' / 目标 ' + res.target, w / 2, h * 0.42);
+  const sub = res.goalText || ('得分 ' + res.score + ' / 目标 ' + res.target);
+  ctx.fillText(sub, w / 2, h * 0.42);
   if (!res.win) {
     ctx.font = '18px sans-serif';
     ctx.fillText('看广告续命 15 秒', w / 2, h * 0.5);

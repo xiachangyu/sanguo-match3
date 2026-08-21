@@ -1,5 +1,6 @@
 const config = require('./config');
 const board = require('./board');
+const { chOf } = require('./tile');
 
 // 12 个故事：id / 名称 / 字块 / 剧情一句话 / 初始技能 / 觉醒技能
 const STORIES = {
@@ -44,7 +45,7 @@ function checkPhrasePath(grid, path) {
   const sameCol = path.every(p => p.c === path[0].c);
   if (!sameRow && !sameCol) return null;
   // 不要求顺序：路径字块集合 == 故事字块集合（故事内无重复字，长度相等 + 全部包含即集合相等）
-  const chars = path.map(p => grid[p.r][p.c]);
+  const chars = path.map(p => chOf(grid[p.r][p.c]));
   const set = new Set(chars);
   for (const s of Object.values(STORIES)) {
     if (s.chars.length === chars.length && s.chars.every(ch => set.has(ch))) {
