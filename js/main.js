@@ -58,7 +58,8 @@ function startLevel(level, mode) {
   const cfg = levels.getLevelConfig(level, mode);
   const save = GAME.save;
   const unlocked = Object.keys(save.unlocked);
-  const required = cfg.storyId && !save.unlocked[cfg.storyId] ? cfg.storyId : null;
+  // 未解锁的故事不上场：只有已解锁的故事字块才会出现在盘面（通关对应故事关后才解锁）
+  const required = cfg.storyId && save.unlocked[cfg.storyId] ? cfg.storyId : null;
   const boardStories = story.pickStoriesForBoard(unlocked, required);
   GAME.storyRateMult = 1; // 每关重置故事字出现率加成
   const pool = story.buildPool(boardStories, GAME.storyRateMult);
@@ -285,22 +286,6 @@ function onTap(tx, ty) {
       startNormal();
     } else if (inRect(tx, ty, btns.elite)) {
       startElite();
-    } else if (inRect(tx, ty, btns.adProp)) {
-      ads.showPropAd().then(r => {
-        if (r.ok) showToast('获得道具：' + propLabel(r.prop));
-        else showToast(r.reason === 'limit' ? '今日广告得道具已达上限' : '未完整观看');
-        GAME.save = storage.load();
-      });
-    } else if (inRect(tx, ty, btns.share)) {
-      const r = ads.showShare();
-      if (r.ok) {
-        showToast('获得道具：' + propLabel(r.prop));
-        GAME.save = storage.load();
-      } else if (r.reason === 'limit') {
-        showToast('今日已分享过');
-      } else {
-        showToast('分享不可用');
-      }
     }
     return;
   }
@@ -322,7 +307,30 @@ function onTap(tx, ty) {
     GAME.save = storage.load();
     return;
   }
-  // PLAYING：先命中道具栏
+  // PLAYING：先命中棋盘下方广告/分享按钮，再命中道具栏
+  const adBtns = ui.playingAdBtns(W, H);
+  if (!adBtns.hidden) {
+    if (inRect(tx, ty, adBtns.adProp)) {
+      ads.showPropAd().then(r => {
+        if (r.ok) showToast('获得道具：' + propLabel(r.prop));
+        else showToast(r.reason === 'limit' ? '今日广告得道具已达上限' : '未完整观看');
+        GAME.save = storage.load();
+      });
+      return;
+    }
+    if (inRect(tx, ty, adBtns.share)) {
+      const r = ads.showShare();
+      if (r.ok) {
+        showToast('获得道具：' + propLabel(r.prop));
+        GAME.save = storage.load();
+      } else if (r.reason === 'limit') {
+        showToast('今日已分享过');
+      } else {
+        showToast('分享不可用');
+      }
+      return;
+    }
+  }
   for (let i = 0; i < config.PROPS.length; i++) {
     if (inRect(tx, ty, ui.propBarRect(i, H))) {
       tapProp(i);
@@ -409,6 +417,7 @@ function render() {
     ui.drawHUD(ctx, { level: GAME.level, mode: GAME.mode, targetScore: GAME.target, timeLeft: GAME.timeLeft, score: GAME.score }, W);
     ui.drawBoard(ctx, GAME.grid, BOARD_X, BOARD_Y, TILE);
     ui.drawPropBar(ctx, GAME.save.props, 16, H - 56, 46);
+    ui.drawPlayingAdBtns(ctx, W, H);
     ui.drawStamina(ctx, GAME.save.stamina, 20, H - 12);
     if (GAME.selected) {
       ctx.strokeStyle = '#ffca28';
