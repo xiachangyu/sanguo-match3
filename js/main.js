@@ -50,6 +50,8 @@ const GAME = {
   floatTexts: [], // 得分飘字/连击反馈 {text,x,y,color,size,t0,dur}
   particles: [], // 消除粒子 {x,y,vx,vy,color,size,t0,dur}
   tutorial: false, // 新手引导遮罩
+  lobbyEnter: null, // 大厅入场动画 {t0,dur}
+  startBanner: null, // 关卡开场横幅 {t0,dur,text}
 };
 
 // ---------- 布局 ----------
@@ -63,6 +65,17 @@ function cellAt(tx, ty) {
   const c = Math.floor((tx - BOARD_X) / TILE);
   if (r < 0 || r >= config.BOARD_ROWS || c < 0 || c >= config.BOARD_COLS) return null;
   return { r, c };
+}
+
+// 圆角矩形（main.js 内部绘制用，与 ui.js 的实现一致）
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
 }
 
 // ---------- 对局初始化 ----------
@@ -89,6 +102,8 @@ function startLevel(level, mode) {
   GAME.goalProgress = 0;
   GAME.floatTexts = [];
   GAME.particles = [];
+  // 关卡开场横幅：进入对局时短暂显示关卡/目标
+  GAME.startBanner = { t0: performance.now(), dur: 1300, text: bannerText(cfg) };
   // 第 1 关首次进入显示新手引导（存档记住已看）
   GAME.tutorial = mode === 'normal' && level === 1 && !(GAME.save.settings && GAME.save.settings.tutorialDone);
   GAME.freeze = 0;
@@ -201,6 +216,30 @@ function goalText() {
   if (GAME.goalType === 'collect') return '收集「' + GAME.goalChar + '」 ' + GAME.goalProgress + '/' + GAME.goalCount;
   if (GAME.goalType === 'phrase') return '故事短语 ' + GAME.goalProgress + '/' + GAME.goalCount;
   return '得分 ' + GAME.score + ' / ' + GAME.target;
+}
+
+// 关卡开场横幅文案
+function bannerText(cfg) {
+  const lv = (cfg.mode === 'elite' ? '精英 ' : '') + '第' + cfg.level + '关';
+  if (cfg.goalType === 'collect') return lv + ' · 收集「' + cfg.goalChar + '」' + cfg.goalCount;
+  if (cfg.goalType === 'phrase') return lv + ' · 触发故事短语 ' + cfg.goalCount + ' 次';
+  return lv + ' · 目标 ' + cfg.targetScore + ' 分';
+}
+
+// 进入大厅：触发入场动画
+function enterLobby() {
+  GAME.lobbyEnter = { t0: performance.now(), dur: 900 };
+}
+
+// 大厅入场动画进度（smoothstep eases 到 0~1）
+function enterProgress() {
+  if (GAME.lobbyEnter) {
+    const p = (performance.now() - GAME.lobbyEnter.t0) / GAME.lobbyEnter.dur;
+    if (p >= 1) { GAME.lobbyEnter = null; return 1; }
+    const t = Math.max(0, Math.min(1, p));
+    return t * t * (3 - 2 * t);
+  }
+  return 1;
 }
 
 // 无解自动洗牌：棋盘无可行步时洗牌，仍无解则重生成（错误处理，见设计文档）
@@ -347,12 +386,14 @@ function onTap(tx, ty) {
         } else {
           GAME.state = 'LOBBY';
           GAME.save = storage.load();
+          enterLobby();
         }
       });
       return;
     }
     GAME.state = 'LOBBY';
     GAME.save = storage.load();
+    enterLobby();
     return;
   }
   // PLAYING：先命中棋盘下方广告/分享按钮，再命中道具栏
@@ -728,7 +769,7 @@ function render() {
   ctx.fillStyle = '#2e7d32';
   ctx.fillRect(0, 0, W, H);
   if (GAME.state === 'LOBBY') {
-    ui.drawLobby(ctx, W, H, GAME.save);
+    ui.drawLobby(ctx, W, H, GAME.save, enterProgress());
   } else if (GAME.state === 'PLAYING') {
     ui.drawHUD(ctx, {
       level: GAME.level, mode: GAME.mode,
@@ -777,6 +818,26 @@ function render() {
         ctx.strokeStyle = '#ffca28';
         ctx.lineWidth = 3;
         ctx.strokeRect(r.x + 1, r.y + 1, r.w - 2, r.h - 2);
+      }
+    }
+    // 关卡开场横幅：进入对局时短暂显示关卡/目标
+    if (GAME.startBanner) {
+      const p = (performance.now() - GAME.startBanner.t0) / GAME.startBanner.dur;
+      if (p >= 1) {
+        GAME.startBanner = null;
+      } else {
+        const alpha = p < 0.2 ? p / 0.2 : p < 0.8 ? 1 : (1 - p) / 0.2;
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        const bw2 = Math.min(W - 60, 320), bh2 = 46, bx2 = (W - bw2) / 2, by2 = H * 0.3;
+        roundRect(ctx, bx2, by2, bw2, bh2, 10);
+        ctx.fill();
+        ctx.fillStyle = '#ffca28';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(GAME.startBanner.text, W / 2, by2 + bh2 / 2);
+        ctx.globalAlpha = 1;
       }
     }
     // 新手引导遮罩（第 1 关首次进入）
@@ -828,8 +889,9 @@ function loop(ts) {
     updateAnim();
   }
   if (GAME.state === 'LOBBY') {
-    // 大厅是静态画面：降到 ~10fps 渲染，省电省 CPU
-    if (ts - GAME.lastRender < 100) {
+    // 大厅是静态画面：降到 ~10fps 渲染，省电省 CPU；入场动画期间保持 60fps
+    const entering = GAME.lobbyEnter && performance.now() - GAME.lobbyEnter.t0 < GAME.lobbyEnter.dur;
+    if (!entering && ts - GAME.lastRender < 100) {
       requestAnimationFrame(loop);
       return;
     }
@@ -842,6 +904,7 @@ function loop(ts) {
 
 function init() {
   GAME.save = storage.load();
+  enterLobby(); // 启动进入大厅，播放入场动画
   sound.setEnabled(GAME.save.settings && GAME.save.settings.sound !== false);
   sound.startBgm(); // 五声音阶 BGM（首次触摸后音频上下文就绪即发声）
   // 每日奖励：每日首次进入发放 1 个随机道具

@@ -212,7 +212,8 @@ function propBarRect(i, h) {
 // 大厅（水墨纸卷风）
 let lobbyBgCache = null; // 背景渐变缓存（屏幕尺寸固定，避免每帧重建）
 
-function drawLobby(ctx, w, h, state) {
+// enter: 入场动画进度（0~1，smoothstep 已缓动）。1 表示完全进入。
+function drawLobby(ctx, w, h, state, enter = 1) {
   // 背景：米白宣纸渐变（缓存复用）
   if (!lobbyBgCache) lobbyBgCache = ctx.createLinearGradient(0, 0, 0, h);
   ctx.fillStyle = lobbyBgCache;
@@ -228,7 +229,8 @@ function drawLobby(ctx, w, h, state) {
   roundRect(ctx, 0, h - 36, w, 36, 18);
   ctx.fill();
 
-  // 标题：墨色大字，逐字拉开字距
+  // 标题：墨色大字，逐字拉开字距（入场从上滑入）
+  ctx.globalAlpha = enter;
   ctx.fillStyle = '#2c2c28';
   ctx.font = 'bold 42px sans-serif';
   ctx.textBaseline = 'middle';
@@ -236,32 +238,35 @@ function drawLobby(ctx, w, h, state) {
   const title = '三国消消乐';
   const step = 46;
   let tx = w / 2 - (title.length * step - 10) / 2;
-  const ty = h * 0.16;
+  const ty = h * 0.16 - (1 - enter) * 44;
   for (const ch of title) {
     ctx.fillText(ch, tx, ty);
     tx += step;
   }
-  // 右上角朱砂印章「汉」（旋转 6° 装饰）
+  // 右上角朱砂印章「汉」（旋转 6°，入场延迟浮现）
+  const enter2 = Math.max(0, Math.min(1, (enter - 0.35) / 0.65));
   ctx.save();
   ctx.translate(w * 0.74, h * 0.135);
   ctx.rotate(6 * Math.PI / 180);
   ctx.fillStyle = '#b23a2e';
   ctx.font = 'bold 15px sans-serif';
+  ctx.globalAlpha = enter * enter2;
   ctx.fillText('汉', 0, 0);
   ctx.restore();
+  ctx.globalAlpha = enter;
   // 标题下渐隐横线
   const line = ctx.createLinearGradient(w / 2 - 90, 0, w / 2 + 90, 0);
   line.addColorStop(0, 'rgba(107,106,96,0)');
   line.addColorStop(0.5, 'rgba(107,106,96,0.7)');
   line.addColorStop(1, 'rgba(107,106,96,0)');
   ctx.fillStyle = line;
-  ctx.fillRect(w / 2 - 90, h * 0.16 + 34, 180, 2);
+  ctx.fillRect(w / 2 - 90, ty + 34, 180, 2);
 
-  // 体力：左上角胶囊标签（纯显示，不可点）
+  // 体力：左上角胶囊标签（纯显示，不可点；入场下滑）
   const stText = '体力 ' + state.stamina + '/' + config.STAMINA_MAX;
   ctx.font = '12px sans-serif';
   const tw = ctx.measureText(stText).width;
-  const sx = 12, sy = 12, sw = tw + 22, sh = 24;
+  const sx = 12, sy = 12 - (1 - enter) * 12, sw = tw + 22, sh = 24;
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   roundRect(ctx, sx, sy, sw, sh, sh / 2);
   ctx.fill();
@@ -270,15 +275,31 @@ function drawLobby(ctx, w, h, state) {
   ctx.stroke();
   ctx.fillStyle = '#5a5240';
   ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
   ctx.fillText(stText, sx + 11, sy + sh / 2 + 1);
+  // 体力回复倒计时（未满时显示）
+  if (state.stamina < config.STAMINA_MAX && state.staminaTs) {
+    const remain = config.STAMINA_REFILL_MS - ((Date.now() - state.staminaTs) % config.STAMINA_REFILL_MS);
+    const mm = Math.floor(remain / 60000), ss = Math.floor((remain % 60000) / 1000);
+    ctx.font = '11px sans-serif';
+    ctx.fillText('满体力 ' + mm + ':' + ss, sx + 11, sy + sh / 2 + 16);
+  }
+  ctx.globalAlpha = 1;
 
   // 关卡进度 + 进度条 + 里程碑刻度
   const prog = lobbyProgress(state.currentLevel);
-  const labelY = h * 0.3;
+  const labelY = h * 0.3 + (1 - enter) * 16;
+  ctx.globalAlpha = enter;
   ctx.fillStyle = '#6b6a60';
   ctx.font = '14px sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('关卡进度 · 第' + state.currentLevel + '关', 24, labelY);
+  // 已解锁故事数（进入页面信息增强）
+  const unlockedCount = state.unlocked ? Object.keys(state.unlocked).length : 0;
+  ctx.textAlign = 'right';
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = '#9a927e';
+  ctx.fillText('已解锁 ' + unlockedCount + ' 个故事', w - 24, labelY);
   const bx = 24, bw = w - 48, barY = labelY + 18;
   ctx.fillStyle = '#d8cdb4';
   roundRect(ctx, bx, barY, bw, 9, 5);
@@ -321,10 +342,11 @@ function drawLobby(ctx, w, h, state) {
     ctx.fillText(text, bx + 12, py + 16 + 1);
   }
 
-  // 按钮
+  // 按钮（入场从下方上浮）
   const btns = lobbyButtons(w, h);
+  const rise = (1 - enter) * 30;
   // 「开始闯关」：朱砂红渐变 + 下投影 3px
-  const nb = btns.normal;
+  const nb = { x: btns.normal.x, y: btns.normal.y + rise, w: btns.normal.w, h: btns.normal.h };
   ctx.fillStyle = 'rgba(138,43,33,0.45)';
   roundRect(ctx, nb.x, nb.y + 4, nb.w, nb.h, 12);
   ctx.fill();
@@ -340,7 +362,7 @@ function drawLobby(ctx, w, h, state) {
   ctx.textBaseline = 'middle';
   ctx.fillText('开始闯关', w / 2, nb.y + nb.h / 2);
   // 「精英模式」：半透明白底 + 墨灰描边
-  const eb = btns.elite;
+  const eb = { x: btns.elite.x, y: btns.elite.y + rise, w: btns.elite.w, h: btns.elite.h };
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
   roundRect(ctx, eb.x, eb.y, eb.w, eb.h, 12);
   ctx.fill();
@@ -350,6 +372,7 @@ function drawLobby(ctx, w, h, state) {
   ctx.fillStyle = '#4a4a44';
   ctx.font = 'bold 20px sans-serif';
   ctx.fillText('精英模式 · 第' + state.eliteLevel + '关', w / 2, eb.y + eb.h / 2);
+  ctx.globalAlpha = 1;
 }
 
 // 结算
