@@ -52,6 +52,7 @@ const GAME = {
   tutorial: false, // 新手引导遮罩
   lobbyEnter: null, // 大厅入场动画 {t0,dur}
   startBanner: null, // 关卡开场横幅 {t0,dur,text}
+  storyIntro: null, // 故事关开场剧情 { story }
 };
 
 // ---------- 布局 ----------
@@ -102,8 +103,11 @@ function startLevel(level, mode) {
   GAME.goalProgress = 0;
   GAME.floatTexts = [];
   GAME.particles = [];
-  // 关卡开场横幅：进入对局时短暂显示关卡/目标
-  GAME.startBanner = { t0: performance.now(), dur: 1300, text: bannerText(cfg) };
+  // 故事关开场剧情：普通模式故事关（非第 1 关，第 1 关留给新手引导）
+  const showStory = mode === 'normal' && cfg.storyId && level !== 1 ? story.getStory(cfg.storyId) : null;
+  GAME.storyIntro = showStory;
+  // 关卡开场横幅：非剧情关进入对局时短暂显示关卡/目标
+  GAME.startBanner = showStory ? null : { t0: performance.now(), dur: 1300, text: bannerText(cfg) };
   // 第 1 关首次进入显示新手引导（存档记住已看）
   GAME.tutorial = mode === 'normal' && level === 1 && !(GAME.save.settings && GAME.save.settings.tutorialDone);
   GAME.freeze = 0;
@@ -358,6 +362,10 @@ function tapCellWithProp(cell) {
 
 function onTap(tx, ty) {
   if (GAME.anim) return; // 动画播放中锁定输入
+  if (GAME.storyIntro) {
+    GAME.storyIntro = null; // 点击进入战场
+    return;
+  }
   if (GAME.tutorial) {
     // 新手引导：点击任意处关闭（存档记住）
     GAME.tutorial = false;
@@ -857,6 +865,10 @@ function render() {
       ctx.font = '15px sans-serif';
       ctx.fillStyle = '#cfd8dc';
       ctx.fillText('点击任意处开始', W / 2, H * 0.68);
+    }
+    // 故事关开场剧情界面（盖在最上层）
+    if (GAME.storyIntro) {
+      ui.drawStoryIntro(ctx, W, H, GAME.storyIntro.story, GAME.level, GAME.mode);
     }
   } else {
     ui.drawResult(ctx, W, H, GAME.result);

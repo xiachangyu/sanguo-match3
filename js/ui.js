@@ -375,6 +375,60 @@ function drawLobby(ctx, w, h, state, enter = 1) {
   ctx.globalAlpha = 1;
 }
 
+// 故事关开场剧情：全屏纸卷卡片，展示故事名 / 剧情一句话 / 该故事字块预览
+function drawStoryIntro(ctx, w, h, story, level, mode) {
+  if (!story) return;
+  ctx.fillStyle = 'rgba(20,25,20,0.86)';
+  ctx.fillRect(0, 0, w, h);
+  const cw = Math.min(w - 60, 330), ch = 348;
+  const cx = (w - cw) / 2, cy = (h - ch) / 2 - 12;
+  // 卡片
+  const g = ctx.createLinearGradient(0, cy, 0, cy + ch);
+  g.addColorStop(0, '#f5eddc');
+  g.addColorStop(1, '#efe2c8');
+  ctx.fillStyle = g;
+  roundRect(ctx, cx, cy, cw, ch, 14);
+  ctx.fill();
+  ctx.strokeStyle = '#c9b896';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // 顶部朱砂红条
+  ctx.fillStyle = '#b23a2e';
+  roundRect(ctx, cx + 20, cy, cw - 40, 6, 3);
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // 标题
+  ctx.fillStyle = '#b23a2e';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillText(story.name, w / 2, cy + 58);
+  // 剧情一句话
+  ctx.fillStyle = '#4a4a44';
+  ctx.font = '17px sans-serif';
+  ctx.fillText(story.intro, w / 2, cy + 108);
+  // 分隔线
+  ctx.strokeStyle = 'rgba(154,146,126,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx + 30, cy + 138);
+  ctx.lineTo(cx + cw - 30, cy + 138);
+  ctx.stroke();
+  // 故事字块预览
+  const size = 52, gap = 10;
+  const total = story.chars.length * size + (story.chars.length - 1) * gap;
+  let tx0 = w / 2 - total / 2;
+  const ty = cy + 196;
+  for (const ch of story.chars) {
+    drawTile(ctx, tx0, ty, size, ch);
+    tx0 += size + gap;
+  }
+  // 提示
+  ctx.fillStyle = '#5a5240';
+  ctx.font = '15px sans-serif';
+  const lv = (mode === 'elite' ? '精英 ' : '') + '第' + level + '关';
+  ctx.fillText(lv + ' · 点击进入战场', w / 2, cy + ch - 30);
+}
+
 // 结算
 function drawResult(ctx, w, h, res) {
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -395,4 +449,4 @@ function drawResult(ctx, w, h, res) {
   ctx.fillText('点任意处返回', w / 2, h * 0.62);
 }
 
-module.exports = { drawTile, drawBoard, drawHUD, drawStamina, drawPropBar, drawLobby, drawResult, drawPlayingAdBtns, tileColor, roundRect, lobbyButtons, propBarRect, playingAdBtns, lobbyProgress };
+module.exports = { drawTile, drawBoard, drawHUD, drawStamina, drawPropBar, drawLobby, drawStoryIntro, drawResult, drawPlayingAdBtns, tileColor, roundRect, lobbyButtons, propBarRect, playingAdBtns, lobbyProgress };
