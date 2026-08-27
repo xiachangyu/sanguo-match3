@@ -1,5 +1,6 @@
 const config = require('./config');
 const board = require('./board');
+const heroes = require('./heroes');
 const { chOf } = require('./tile');
 
 // 12 个故事：id / 名称 / 字块 / 剧情一句话 / 初始技能 / 觉醒技能
@@ -52,6 +53,12 @@ function checkPhrasePath(grid, path) {
       return { storyId: s.id, chars: s.chars.slice(), cells: path.slice() };
     }
   }
+  // 武将名（集合匹配，顺序不限；命中则归属其所属故事技能）
+  for (const h of heroes.HERO_LIST) {
+    if (h.len === chars.length && h.chars.every(ch => set.has(ch))) {
+      return { storyId: h.storyId, heroId: h.id, chars: h.chars.slice(), cells: path.slice() };
+    }
+  }
   return null;
 }
 
@@ -71,8 +78,8 @@ function pickStoriesForBoard(unlockedIds, requiredStoryId) {
   return picked;
 }
 
-// 构造本盘字池：基础字高权重 + 上场故事字低权重
-function buildPool(boardStories, storyRateMult = 1) {
+// 构造本盘字池：基础字高权重 + 上场故事字低权重 + 已解锁武将字低权重
+function buildPool(boardStories, storyRateMult = 1, heroChars = []) {
   const pool = {};
   for (const ch of config.BASE_TILES) pool[ch] = config.BASE_WEIGHT;
   for (const id of boardStories) {
@@ -81,6 +88,10 @@ function buildPool(boardStories, storyRateMult = 1) {
     for (const ch of s.chars) {
       pool[ch] = Math.round(config.STORY_WEIGHT * storyRateMult);
     }
+  }
+  // 武将字：解锁该武将后其名字单字入池（不与故事字冲突，取较大权重）
+  for (const ch of heroChars) {
+    pool[ch] = Math.max(pool[ch] || 0, config.HERO_WEIGHT);
   }
   return pool;
 }

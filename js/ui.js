@@ -2,6 +2,7 @@ const config = require('./config');
 const levels = require('./levels');
 const story = require('./story');
 const skills = require('./skills');
+const heroes = require('./heroes');
 const { chOf, specialOf } = require('./tile');
 
 // 字块配色：基础字按固定色，故事字用金色
@@ -496,12 +497,12 @@ function drawCodex(ctx, w, h, save) {
   ctx.font = '15px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('‹ 返回', layout.back.x + layout.back.w / 2, layout.back.y + layout.back.h / 2 + 1);
-  // 解锁进度
+  // 解锁/收集进度
   const unlockedCount = save.unlocked ? Object.keys(save.unlocked).length : 0;
+  const heroCount = save.heroes ? Object.keys(save.heroes).length : 0;
   ctx.fillStyle = '#9a927e';
   ctx.font = '13px sans-serif';
-  ctx.fillText('已解锁 ' + unlockedCount + ' / 12', w / 2, 70);
-  // 卡片
+  ctx.fillText('已解锁故事 ' + unlockedCount + ' / 12 · 已招揽武将 ' + heroCount + ' / ' + heroes.HERO_LIST.length, w / 2, 68);
   const unlockList = levels.UNLOCK;
   for (let i = 0; i < layout.cards.length; i++) {
     const card = layout.cards[i];
@@ -596,9 +597,27 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   } else {
     drawSkillRow(ctx, w, cx, cy + 250, cw, '觉醒技能', awk.name, '通关对应精英关解锁', '#8a8a8a');
   }
+  // 武将（收集：已招揽显示名字，未招揽显示 ???）
+  const hus = heroes.heroesForStory(storyId);
+  if (hus.length) {
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#8a6d3b';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText('武将', cx + 22, cy + 316);
+    ctx.font = '14px sans-serif';
+    let hx = cx + 22;
+    for (const name of hus) {
+      const got = save.heroes && save.heroes[name];
+      ctx.fillStyle = got ? '#b23a2e' : '#b8ac94';
+      const label = got ? name : '???';
+      ctx.fillText(label, hx, cy + 344);
+      hx += ctx.measureText(label).width + 14;
+    }
+  }
   // 提示
   ctx.fillStyle = '#5a5240';
   ctx.font = '14px sans-serif';
+  ctx.textAlign = 'center';
   ctx.fillText('点击任意处返回', w / 2, cy + ch - 26);
 }
 

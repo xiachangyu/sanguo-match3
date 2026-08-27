@@ -9,6 +9,7 @@ const storage = require('./storage');
 const ads = require('./ads');
 const sound = require('./sound');
 const ui = require('./ui');
+const heroes = require('./heroes');
 const { tile, chOf, specialOf } = require('./tile');
 
 const canvas = wx.createCanvas();
@@ -89,7 +90,14 @@ function startLevel(level, mode) {
   const required = cfg.storyId && save.unlocked[cfg.storyId] ? cfg.storyId : null;
   const boardStories = story.pickStoriesForBoard(unlocked, required);
   GAME.storyRateMult = cfg.goalType === 'phrase' ? config.PHRASE_STORY_MULT : 1; // 短语目标关提高故事字出现率
-  const pool = story.buildPool(boardStories, GAME.storyRateMult);
+  // 已解锁武将的名字单字作为盘面字块（去重）
+  const heroSet = new Set();
+  for (const id of unlocked) {
+    for (const name of heroes.heroesForStory(id)) {
+      for (const ch of name) heroSet.add(ch);
+    }
+  }
+  const pool = story.buildPool(boardStories, GAME.storyRateMult, [...heroSet]);
   GAME.level = level;
   GAME.mode = mode;
   GAME.grid = board.createBoard(config.BOARD_ROWS, config.BOARD_COLS, pool);
@@ -132,6 +140,10 @@ function onWin() {
     if (cfg.storyId && !save.unlocked[cfg.storyId]) {
       save.unlocked[cfg.storyId] = { awakened: false };
     }
+    // 解锁本关武将（收集）
+    if (cfg.storyId) {
+      for (const name of heroes.heroesForStory(cfg.storyId)) save.heroes[name] = true;
+    }
   } else {
     save.eliteLevel = Math.max(save.eliteLevel, GAME.level + 1);
     if (cfg.storyId && save.unlocked[cfg.storyId]) {
@@ -157,6 +169,11 @@ function resolvePhrase() {
   const hit = story.checkPhrasePath(GAME.grid, GAME.pendingPath);
   if (!hit) return;
   sound.phrase(); // 故事短语：五声音阶上行
+  if (hit.heroId) {
+    // 武姓名触发作技能：飘字提示
+    const org = GAME.pendingPath[GAME.pendingPath.length - 1];
+    pushFloat(hit.heroId, BOARD_X + (org.c + 0.5) * TILE, BOARD_Y + (org.r + 0.5) * TILE - 22, '#ff8f00', 24);
+  }
   if (GAME.goalType === 'phrase') GAME.goalProgress += 1;
   const save = GAME.save;
   const awoken = save.unlocked[hit.storyId] && save.unlocked[hit.storyId].awakened;

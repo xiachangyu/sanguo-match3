@@ -4,6 +4,7 @@ module.exports = {
   BASE_TILES: ['兵', '弓', '车', '枪', '骑'],
   BASE_WEIGHT: 100,
   STORY_WEIGHT: 15,
+  HERO_WEIGHT: 12, // 已解锁武将的名字单字权重（略低于故事字）
   STORY_PER_BOARD_MIN: 2,
   STORY_PER_BOARD_MAX: 3,
   SCORE_MATCH3: 30,

@@ -14,6 +14,7 @@ function defaultState() {
     stamina: config.STAMINA_INITIAL,
     staminaTs: Date.now(),
     unlocked: {}, // storyId -> { awakened: boolean }
+    heroes: {}, // 已收集武将名 -> true
     props: { hammer: 0, swap: 0, shuffle: 0, time: 0 },
     daily: { date: today(), adsStamina: 0, adsProp: 0, share: 0, continueLevel: 0, rewarded: false },
     highScores: {},
@@ -32,6 +33,8 @@ function normalize(state) {
   }
   merged.settings = Object.assign({ sound: true, tutorialDone: false }, merged.settings || {});
   merged.props = Object.assign({ hammer: 0, swap: 0, shuffle: 0, time: 0 }, merged.props || {});
+  merged.unlocked = merged.unlocked || {};
+  merged.heroes = merged.heroes || {};
   return merged;
 }
 
