@@ -76,8 +76,10 @@ function refill(grid, pool) {
 }
 
 // 连锁结算：消→落→补→再消，返回最终盘面/总分/连锁数/各轮消除格
+// 注意：输入可能含 null（如道具砸掉的格子、划掉的短语字块），先重力+补字填满，再进入连锁。
+// 否则若无匹配，null 空洞会残留（锤子砸一个不触发连锁的字块时棋盘会留洞）。
 function resolveCascade(grid, pool) {
-  let g = grid;
+  let g = refill(applyGravity(grid), pool);
   let score = 0;
   let cascade = 0;
   const cleared = [];

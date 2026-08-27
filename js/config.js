@@ -22,6 +22,7 @@ module.exports = {
   COLLECT_STEP: 2,
   PHRASE_BASE: 2,
   PHRASE_STEP: 1,
+  PHRASE_STORY_MULT: 2, // 短语目标关故事字出现率倍率（提高可划短语的 chance）
   STAMINA_INITIAL: 30,
   STAMINA_MAX: 30,
   STAMINA_COST: 5,

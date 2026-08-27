@@ -73,6 +73,22 @@ test('resolveCascade clears matches and scores cascade', () => {
   assert.ok(match3FindMatches(out).length === 0);
 });
 
+test('resolveCascade fills null holes even when no match forms (hammer case)', () => {
+  // 一个无匹配棋盘，人为戳一个 null（锤子砸掉字块但不触发连锁）
+  const grid = [
+    ['兵', '弓', '车'],
+    ['枪', null, '兵'],
+    ['弓', '车', '枪'],
+  ];
+  const { grid: out } = board.resolveCascade(grid, pool);
+  for (let r = 0; r < out.length; r++) {
+    for (let c = 0; c < out[0].length; c++) {
+      assert.ok(out[r][c] !== null, 'cell ' + r + ',' + c + ' should not be null');
+    }
+  }
+  assert.strictEqual(match3FindMatches(out).length, 0);
+});
+
 function match3FindMatches(grid) {
   return require('../js/match3').findMatches(grid);
 }

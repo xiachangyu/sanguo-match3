@@ -88,7 +88,7 @@ function startLevel(level, mode) {
   // 未解锁的故事不上场：只有已解锁的故事字块才会出现在盘面（通关对应故事关后才解锁）
   const required = cfg.storyId && save.unlocked[cfg.storyId] ? cfg.storyId : null;
   const boardStories = story.pickStoriesForBoard(unlocked, required);
-  GAME.storyRateMult = 1; // 每关重置故事字出现率加成
+  GAME.storyRateMult = cfg.goalType === 'phrase' ? config.PHRASE_STORY_MULT : 1; // 短语目标关提高故事字出现率
   const pool = story.buildPool(boardStories, GAME.storyRateMult);
   GAME.level = level;
   GAME.mode = mode;
@@ -247,10 +247,14 @@ function enterProgress() {
   return 1;
 }
 
-// 无解自动洗牌：棋盘无可行步时洗牌，仍无解则重生成（错误处理，见设计文档）
+// 无解自动洗牌：洗牌重排后可能直接形成匹配，须消除；仍无解则重生成（错误处理，见设计文档）
 function ensureValidMove() {
   if (match3.hasValidMove(GAME.grid)) return;
   GAME.grid = board.shuffleGrid(GAME.grid);
+  // 洗牌可能直接形成三连，需连锁消除并计分
+  const chain = board.resolveCascade(GAME.grid, GAME.pool);
+  GAME.grid = chain.grid;
+  GAME.score += chain.score * scoreMult();
   if (!match3.hasValidMove(GAME.grid)) {
     GAME.grid = board.createBoard(config.BOARD_ROWS, config.BOARD_COLS, GAME.pool);
   }
