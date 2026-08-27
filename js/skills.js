@@ -205,4 +205,31 @@ function getSkillId(storyId, awakened) {
   return awakened ? s.awakenedSkill : s.initialSkill;
 }
 
-module.exports = { SKILLS, activate, getSkillId };
+// 技能静态信息（图鉴等展示用）：名称 + 效果描述
+const SKILL_INFO = {
+  blessing: { name: '结义祝福', desc: '消除 ×3，10 秒内再 ×2' },
+  brotherhood: { name: '兄弟同心', desc: '消除 ×5，15 秒内再 ×3' },
+  rowClear: { name: '一刀两断', desc: '清除一整行' },
+  crossClear: { name: '温酒未凉', desc: '清除整行 + 整列' },
+  combo3: { name: '三英合力', desc: '随机 3 处消除' },
+  combo6: { name: '虎牢关决战', desc: '随机 6 处消除' },
+  combo7: { name: '七擒七纵', desc: '随机 7 处消除' },
+  combo10: { name: '南中归心', desc: '随机 10 处消除' },
+  addTime10: { name: '青梅煮酒', desc: '本关时间 +10 秒' },
+  addTime20: { name: '论尽天下', desc: '时间 +20 秒并全盘刷新' },
+  shuffle: { name: '单骑奔袭', desc: '洗牌重排盘面' },
+  shuffleGenerate: { name: '过五关斩六将', desc: '洗牌 + 生成「千里走单骑」字块' },
+  clearColor: { name: '火烧乌巢', desc: '清除所有同一种基础字块' },
+  clearTwoColors: { name: '官渡决胜', desc: '清除所有两种基础字块' },
+  generatePhrase: { name: '三顾之恩', desc: '生成一套「三顾茅庐」字块' },
+  generateAndTrigger: { name: '卧龙出山', desc: '生成并自动触发一次' },
+  boostStoryRate: { name: '借箭', desc: '故事字出现率翻倍' },
+  clearAllStory: { name: '万箭齐发', desc: '清除所有故事字块' },
+  clear30: { name: '火烧赤壁', desc: '随机清除 30%' },
+  clearAll: { name: '东风乍起', desc: '全屏清除' },
+  pause5: { name: '华容义释', desc: '时间暂停 5 秒' },
+  pause8: { name: '义释千古', desc: '暂停 8 秒 + 得分 ×2' },
+  lowTimeDouble: { name: '空城退敌', desc: '剩余 <10 秒时消除 ×2' },
+};
+
+module.exports = { SKILLS, activate, getSkillId, SKILL_INFO };

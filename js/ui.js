@@ -1,6 +1,7 @@
 const config = require('./config');
 const levels = require('./levels');
 const story = require('./story');
+const skills = require('./skills');
 const { chOf, specialOf } = require('./tile');
 
 // 字块配色：基础字按固定色，故事字用金色
@@ -143,6 +144,7 @@ function lobbyButtons(w, h) {
   return {
     normal: { x: w / 2 - 110, y: h * 0.52, w: 220, h: 64 },
     elite: { x: w / 2 - 110, y: h * 0.52 + 80, w: 220, h: 56 },
+    codex: { x: w - 112, y: h - 66, w: 92, h: 44 },
   };
 }
 
@@ -372,6 +374,17 @@ function drawLobby(ctx, w, h, state, enter = 1) {
   ctx.fillStyle = '#4a4a44';
   ctx.font = 'bold 20px sans-serif';
   ctx.fillText('精英模式 · 第' + state.eliteLevel + '关', w / 2, eb.y + eb.h / 2);
+  // 图鉴按钮（右下角）
+  const cb = btns.codex;
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  roundRect(ctx, cb.x, cb.y, cb.w, cb.h, 10);
+  ctx.fill();
+  ctx.strokeStyle = '#9a927e';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#4a4a44';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText('图鉴', cb.x + cb.w / 2, cb.y + cb.h / 2);
   ctx.globalAlpha = 1;
 }
 
@@ -429,6 +442,179 @@ function drawStoryIntro(ctx, w, h, story, level, mode) {
   ctx.fillText(lv + ' · 点击进入战场', w / 2, cy + ch - 30);
 }
 
+// 图鉴布局：返回按钮 + 12 个故事卡片网格（4 列）
+function codexLayout(w, h) {
+  const cols = 4, gap = 10, margin = 14;
+  const cardW = Math.floor((w - margin * 2 - gap * (cols - 1)) / cols);
+  const cardH = 100;
+  const cards = [];
+  for (let i = 0; i < 12; i++) {
+    const c = i % cols, r = Math.floor(i / cols);
+    cards.push({ x: margin + c * (cardW + gap), y: 96 + r * (cardH + gap), w: cardW, h: cardH });
+  }
+  return { back: { x: 12, y: 14, w: 60, h: 34 }, cards };
+}
+
+function codexCardAt(tx, ty, layout) {
+  for (let i = 0; i < layout.cards.length; i++) {
+    const r = layout.cards[i];
+    if (tx >= r.x && tx <= r.x + r.w && ty >= r.y && ty <= r.y + r.h) return i;
+  }
+  return -1;
+}
+
+// 图鉴主界面
+function drawCodex(ctx, w, h, save) {
+  // 背景
+  if (!lobbyBgCache) lobbyBgCache = ctx.createLinearGradient(0, 0, 0, h);
+  ctx.fillStyle = lobbyBgCache;
+  ctx.fillRect(0, 0, w, h);
+  // 底部远山墨影
+  const hill = ctx.createLinearGradient(0, h * 0.62, 0, h);
+  hill.addColorStop(0, 'rgba(58,75,65,0)');
+  hill.addColorStop(1, 'rgba(58,75,65,0.38)');
+  ctx.fillStyle = hill;
+  ctx.fillRect(0, h * 0.62, w, h * 0.38);
+  ctx.fillStyle = 'rgba(58,75,65,0.85)';
+  roundRect(ctx, 0, h - 36, w, 36, 18);
+  ctx.fill();
+  // 标题
+  ctx.fillStyle = '#2c2c28';
+  ctx.font = 'bold 26px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('三国图鉴', w / 2, 40);
+  // 返回按钮
+  const layout = codexLayout(w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  roundRect(ctx, layout.back.x, layout.back.y, layout.back.w, layout.back.h, 8);
+  ctx.fill();
+  ctx.strokeStyle = '#c9b896';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#5a5240';
+  ctx.font = '15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('‹ 返回', layout.back.x + layout.back.w / 2, layout.back.y + layout.back.h / 2 + 1);
+  // 解锁进度
+  const unlockedCount = save.unlocked ? Object.keys(save.unlocked).length : 0;
+  ctx.fillStyle = '#9a927e';
+  ctx.font = '13px sans-serif';
+  ctx.fillText('已解锁 ' + unlockedCount + ' / 12', w / 2, 70);
+  // 卡片
+  const unlockList = levels.UNLOCK;
+  for (let i = 0; i < layout.cards.length; i++) {
+    const card = layout.cards[i];
+    const storyId = unlockList[i].storyId;
+    const s = story.getStory(storyId);
+    const unlocked = save.unlocked[storyId];
+    if (unlocked) {
+      // 已解锁：米白卡
+      ctx.fillStyle = '#fffdf6';
+      roundRect(ctx, card.x, card.y, card.w, card.h, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#c9b896';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#4a4a44';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText(s.name, card.x + card.w / 2, card.y + card.h * 0.36);
+      // 字块小预览
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#8a6d3b';
+      ctx.fillText(s.chars.slice(0, 3).join(''), card.x + card.w / 2, card.y + card.h * 0.62);
+      // 状态角标
+      if (unlocked.awakened) {
+        ctx.fillStyle = '#b23a2e';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('觉醒', card.x + card.w / 2, card.y + card.h - 12);
+      } else {
+        ctx.fillStyle = '#2e7d32';
+        ctx.font = '11px sans-serif';
+        ctx.fillText('已解锁', card.x + card.w / 2, card.y + card.h - 12);
+      }
+    } else {
+      // 未解锁：深灰卡 + 问号
+      ctx.fillStyle = 'rgba(90,82,64,0.18)';
+      roundRect(ctx, card.x, card.y, card.w, card.h, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#b8ac94';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#a69c86';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText('???', card.x + card.w / 2, card.y + card.h * 0.42);
+      ctx.font = '11px sans-serif';
+      ctx.fillText('未解锁', card.x + card.w / 2, card.y + card.h - 12);
+    }
+  }
+}
+
+// 图鉴详情弹层：故事名 / intro / 字块 / 初始技能 / 觉醒技能
+function drawCodexDetail(ctx, w, h, storyId, save) {
+  const s = story.getStory(storyId);
+  const unlocked = save.unlocked[storyId];
+  if (!s) return;
+  ctx.fillStyle = 'rgba(20,25,20,0.86)';
+  ctx.fillRect(0, 0, w, h);
+  const cw = Math.min(w - 40, 350), ch = 430;
+  const cx = (w - cw) / 2, cy = Math.max(16, (h - ch) / 2 - 8);
+  const g = ctx.createLinearGradient(0, cy, 0, cy + ch);
+  g.addColorStop(0, '#f5eddc');
+  g.addColorStop(1, '#efe2c8');
+  ctx.fillStyle = g;
+  roundRect(ctx, cx, cy, cw, ch, 14);
+  ctx.fill();
+  ctx.strokeStyle = '#c9b896';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // 故事名
+  ctx.fillStyle = '#b23a2e';
+  ctx.font = 'bold 26px sans-serif';
+  ctx.fillText(s.name, w / 2, cy + 40);
+  // intro
+  ctx.fillStyle = '#4a4a44';
+  ctx.font = '15px sans-serif';
+  ctx.fillText(s.intro, w / 2, cy + 78);
+  // 字块预览
+  const size = 44, gap = 8;
+  const total = s.chars.length * size + (s.chars.length - 1) * gap;
+  let tx0 = w / 2 - total / 2;
+  const ty = cy + 114;
+  for (const ch of s.chars) {
+    drawTile(ctx, tx0, ty, size, ch);
+    tx0 += size + gap;
+  }
+  // 技能
+  const ini = skills.SKILL_INFO[s.initialSkill];
+  const awk = skills.SKILL_INFO[s.awakenedSkill];
+  drawSkillRow(ctx, w, cx, cy + 190, cw, '初始技能', ini.name, ini.desc, '#2e7d32');
+  if (unlocked && unlocked.awakened) {
+    drawSkillRow(ctx, w, cx, cy + 250, cw, '觉醒技能', awk.name, awk.desc, '#b23a2e');
+  } else {
+    drawSkillRow(ctx, w, cx, cy + 250, cw, '觉醒技能', awk.name, '通关对应精英关解锁', '#8a8a8a');
+  }
+  // 提示
+  ctx.fillStyle = '#5a5240';
+  ctx.font = '14px sans-serif';
+  ctx.fillText('点击任意处返回', w / 2, cy + ch - 26);
+}
+
+function drawSkillRow(ctx, w, cx, y, cw, label, name, desc, color) {
+  ctx.textAlign = 'left';
+  ctx.fillStyle = color;
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillText(label, cx + 22, y);
+  ctx.fillStyle = '#4a4a44';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText(name, cx + 22, y + 28);
+  ctx.fillStyle = '#6b6a60';
+  ctx.font = '13px sans-serif';
+  ctx.fillText(desc, cx + 22, y + 52);
+}
+
 // 结算
 function drawResult(ctx, w, h, res) {
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -449,4 +635,4 @@ function drawResult(ctx, w, h, res) {
   ctx.fillText('点任意处返回', w / 2, h * 0.62);
 }
 
-module.exports = { drawTile, drawBoard, drawHUD, drawStamina, drawPropBar, drawLobby, drawStoryIntro, drawResult, drawPlayingAdBtns, tileColor, roundRect, lobbyButtons, propBarRect, playingAdBtns, lobbyProgress };
+module.exports = { drawTile, drawBoard, drawHUD, drawStamina, drawPropBar, drawLobby, drawStoryIntro, drawCodex, drawCodexDetail, drawResult, drawPlayingAdBtns, tileColor, roundRect, lobbyButtons, propBarRect, playingAdBtns, lobbyProgress, codexLayout, codexCardAt };

@@ -53,6 +53,7 @@ const GAME = {
   lobbyEnter: null, // 大厅入场动画 {t0,dur}
   startBanner: null, // 关卡开场横幅 {t0,dur,text}
   storyIntro: null, // 故事关开场剧情 { story }
+  codexOpen: null, // 图鉴详情当前展开的故事 id（null 为列表）
 };
 
 // ---------- 布局 ----------
@@ -381,6 +382,34 @@ function onTap(tx, ty) {
     } else if (inRect(tx, ty, btns.elite)) {
       sound.tap();
       startElite();
+    } else if (inRect(tx, ty, btns.codex)) {
+      sound.tap();
+      GAME.state = 'CODEX';
+      GAME.codexOpen = null;
+    }
+    return;
+  }
+  if (GAME.state === 'CODEX') {
+    if (GAME.codexOpen) {
+      GAME.codexOpen = null; // 点击关闭详情
+      return;
+    }
+    const layout = ui.codexLayout(W, H);
+    if (inRect(tx, ty, layout.back)) {
+      sound.tap();
+      GAME.state = 'LOBBY';
+      enterLobby();
+      return;
+    }
+    const idx = ui.codexCardAt(tx, ty, layout);
+    if (idx >= 0) {
+      const storyId = levels.UNLOCK[idx].storyId;
+      if (GAME.save.unlocked[storyId]) {
+        sound.tap();
+        GAME.codexOpen = storyId;
+      } else {
+        showToast('尚未解锁 · 通关第 ' + levels.UNLOCK[idx].level + ' 关解锁');
+      }
     }
     return;
   }
@@ -778,6 +807,9 @@ function render() {
   ctx.fillRect(0, 0, W, H);
   if (GAME.state === 'LOBBY') {
     ui.drawLobby(ctx, W, H, GAME.save, enterProgress());
+  } else if (GAME.state === 'CODEX') {
+    ui.drawCodex(ctx, W, H, GAME.save);
+    if (GAME.codexOpen) ui.drawCodexDetail(ctx, W, H, GAME.codexOpen, GAME.save);
   } else if (GAME.state === 'PLAYING') {
     ui.drawHUD(ctx, {
       level: GAME.level, mode: GAME.mode,
@@ -900,15 +932,15 @@ function loop(ts) {
     GAME.buffs = GAME.buffs.filter(b => b.endAt > performance.now());
     updateAnim();
   }
-  if (GAME.state === 'LOBBY') {
-    // 大厅是静态画面：降到 ~10fps 渲染，省电省 CPU；入场动画期间保持 60fps
-    const entering = GAME.lobbyEnter && performance.now() - GAME.lobbyEnter.t0 < GAME.lobbyEnter.dur;
+  if (GAME.state === 'LOBBY' || GAME.state === 'CODEX') {
+    // 大厅/图鉴是静态画面：降到 ~10fps 渲染；大厅入场动画期间保持 60fps
+    const entering = GAME.state === 'LOBBY' && GAME.lobbyEnter && performance.now() - GAME.lobbyEnter.t0 < GAME.lobbyEnter.dur;
     if (!entering && ts - GAME.lastRender < 100) {
       requestAnimationFrame(loop);
       return;
     }
     GAME.lastRender = ts;
-    tickStamina();
+    if (GAME.state === 'LOBBY') tickStamina();
   }
   render();
   requestAnimationFrame(loop);
