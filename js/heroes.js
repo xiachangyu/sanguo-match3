@@ -3,18 +3,18 @@
 // 玩家一笔划过相邻直线、集合恰好为某武将名（顺序不限）即触发该武将的独立技能，
 // 并显示其台词 + 播放专属音效。
 const HEROES = {
-  刘备:   { name: '刘备', story: 'taoyuan', skill: 'blessing', voice: '我二弟天下无敌' },
-  关羽:   { name: '关羽', story: 'taoyuan', skill: 'rowClear', voice: '看我温酒斩华雄' },
-  张飞:   { name: '张飞', story: 'taoyuan', skill: 'combo3', voice: '俺也一样' },
-  华雄:   { name: '华雄', story: 'wenjiu', skill: 'combo7', voice: '谁敢应战' },
-  吕布:   { name: '吕布', story: 'sanying', skill: 'combo6', voice: '天下无敌' },
-  曹操:   { name: '曹操', story: 'zhujiu', skill: 'clear30', voice: '宁教我负天下人' },
-  袁绍:   { name: '袁绍', story: 'guandu', skill: 'addTime10', voice: '我有颜良文丑' },
-  诸葛亮: { name: '诸葛亮', story: 'sangu', skill: 'generatePhrase', voice: '鞠躬尽瘁，死而后已' },
-  鲁肃:   { name: '鲁肃', story: 'caochuan', skill: 'pause5', voice: '以和为贵' },
-  周瑜:   { name: '周瑜', story: 'chibi', skill: 'clearAllStory', voice: '既生瑜，何生亮' },
-  孟获:   { name: '孟获', story: 'qinqin', skill: 'combo10', voice: '七纵七擒' },
-  司马懿: { name: '司马懿', story: 'kongcheng', skill: 'lowTimeDouble', voice: '鹰视狼顾' },
+  刘备:   { name: '刘备', story: 'taoyuan', skill: 'blessing', voice: '我二弟天下无敌', audio: 'liubei.wav' },
+  关羽:   { name: '关羽', story: 'taoyuan', skill: 'rowClear', voice: '看我温酒斩华雄', audio: 'guanyu.wav' },
+  张飞:   { name: '张飞', story: 'taoyuan', skill: 'combo3', voice: '俺也一样', audio: 'zhangfei.wav' },
+  华雄:   { name: '华雄', story: 'wenjiu', skill: 'combo7', voice: '谁敢应战', audio: 'huaxiong.wav' },
+  吕布:   { name: '吕布', story: 'sanying', skill: 'combo6', voice: '天下无敌', audio: 'lvbu.wav' },
+  曹操:   { name: '曹操', story: 'zhujiu', skill: 'clear30', voice: '宁教我负天下人', audio: 'caocao.wav' },
+  袁绍:   { name: '袁绍', story: 'guandu', skill: 'addTime10', voice: '我有颜良文丑', audio: 'yuanshao.wav' },
+  诸葛亮: { name: '诸葛亮', story: 'sangu', skill: 'generatePhrase', voice: '鞠躬尽瘁，死而后已', audio: 'zhugeliang.wav' },
+  鲁肃:   { name: '鲁肃', story: 'caochuan', skill: 'pause5', voice: '以和为贵', audio: 'lusu.wav' },
+  周瑜:   { name: '周瑜', story: 'chibi', skill: 'clearAllStory', voice: '既生瑜，何生亮', audio: 'zhouyu.wav' },
+  孟获:   { name: '孟获', story: 'qinqin', skill: 'combo10', voice: '七纵七擒', audio: 'menghuo.wav' },
+  司马懿: { name: '司马懿', story: 'kongcheng', skill: 'lowTimeDouble', voice: '鹰视狼顾', audio: 'simayi.wav' },
 };
 
 // 每个故事关关联一组武将（按三国剧情/时间线）

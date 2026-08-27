@@ -99,6 +99,27 @@ const sfx = {
   lose() { tone(392, 0, 0.2, 'sine', 0.18); tone(311.13, 0.18, 0.26, 'sine', 0.18); tone(261.63, 0.4, 0.32, 'sine', 0.18); },
 };
 
+// 武将语音：优先播放 audio/<file>.wav（运行 generate-voices.ps1 生成），无音频则降级为合成音效
+const voices = {};
+function heroVoice(name, audio) {
+  if (audio && typeof wx !== 'undefined' && wx.createInnerAudioContext) {
+    try {
+      let c = voices[name];
+      if (!c) {
+        c = wx.createInnerAudioContext();
+        c.src = 'audio/' + audio;
+        c.onError(() => {});
+        voices[name] = c;
+      }
+      c.stop();
+      try { c.seek(0); } catch (e) {}
+      if (enabled) c.play();
+      return;
+    } catch (e) { /* 降级为合成音效 */ }
+  }
+  sfx.heroVoice(name);
+}
+
 module.exports = {
   unlock,
   setEnabled,
@@ -112,7 +133,7 @@ module.exports = {
   cascade: sfx.cascade,
   phrase: sfx.phrase,
   skill: sfx.skill,
-  heroVoice: sfx.heroVoice,
+  heroVoice,
   prop: sfx.prop,
   win: sfx.win,
   lose: sfx.lose,

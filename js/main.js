@@ -197,7 +197,7 @@ function resolvePhrase() {
   // 武将触发：显示专属台词横幅 + 播放专属音效；否则播通用技能音效
   if (hero) {
     GAME.voiceBanner = { text: hero.voice, t0: performance.now(), dur: 1600 };
-    sound.heroVoice(hero.name);
+    sound.heroVoice(hero.name, hero.audio);
   } else {
     sound.skill(); // 技能触发音效
   }
