@@ -85,6 +85,16 @@ const sfx = {
   // 技能：高八度快速琶音 + 收尾长音
   skill() { PENTA.forEach((f, i) => tone(f * 2, i * 0.05, 0.1, 'sine', 0.18)); tone(880, 0.28, 0.28, 'triangle', 0.22); },
   prop() { tone(620, 0, 0.06, 'square', 0.1); tone(930, 0.05, 0.1, 'square', 0.1); },
+  // 每个武将不同音效：用名字生成不同音高序（"语音"为合成音，台词文案由 main 另显）
+  heroVoice(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) % 1000;
+    const base = 280 + (hash % 420);
+    tone(base, 0, 0.11, 'square', 0.16);
+    tone(base * 1.5, 0.09, 0.14, 'square', 0.16);
+    tone(base * 2, 0.2, 0.18, 'sawtooth', 0.13);
+    tone(base * 2.5, 0.34, 0.2, 'triangle', 0.12);
+  },
   win() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.12, 0.24, 'triangle', 0.2)); },
   lose() { tone(392, 0, 0.2, 'sine', 0.18); tone(311.13, 0.18, 0.26, 'sine', 0.18); tone(261.63, 0.4, 0.32, 'sine', 0.18); },
 };
@@ -102,6 +112,7 @@ module.exports = {
   cascade: sfx.cascade,
   phrase: sfx.phrase,
   skill: sfx.skill,
+  heroVoice: sfx.heroVoice,
   prop: sfx.prop,
   win: sfx.win,
   lose: sfx.lose,

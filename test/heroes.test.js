@@ -43,3 +43,15 @@ test('buildPool includes unlocked hero chars and keeps base weight', () => {
   assert.strictEqual(pool['刘'], require('../js/config').HERO_WEIGHT);
   assert.strictEqual(pool['兵'], 100);
 });
+
+test('every hero has a distinct skill (exists in SKILL_INFO) and a voice line', () => {
+  const skills = require('../js/skills');
+  for (const h of heroes.HERO_LIST) {
+    assert.ok(skills.SKILL_INFO[h.skill], h.name + ' skill ' + h.skill + ' missing');
+    assert.ok(h.voice && h.voice.length > 0, h.name + ' voice missing');
+  }
+  // 刘备/关羽/张飞 的台词
+  assert.strictEqual(heroes.getHero('刘备').voice, '我二弟天下无敌');
+  assert.strictEqual(heroes.getHero('关羽').voice, '看我温酒斩华雄');
+  assert.strictEqual(heroes.getHero('张飞').voice, '俺也一样');
+});

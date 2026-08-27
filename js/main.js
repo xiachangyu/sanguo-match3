@@ -55,6 +55,7 @@ const GAME = {
   startBanner: null, // 关卡开场横幅 {t0,dur,text}
   storyIntro: null, // 故事关开场剧情 { story }
   codexOpen: null, // 图鉴详情当前展开的故事 id（null 为列表）
+  voiceBanner: null, // 武将台词横幅 {text,t0,dur}
 };
 
 // ---------- 布局 ----------
@@ -93,8 +94,8 @@ function startLevel(level, mode) {
   // 已解锁武将的名字单字作为盘面字块（去重）
   const heroSet = new Set();
   for (const id of unlocked) {
-    for (const name of heroes.heroesForStory(id)) {
-      for (const ch of name) heroSet.add(ch);
+    for (const hero of heroes.heroesForStory(id)) {
+      for (const ch of hero.name) heroSet.add(ch);
     }
   }
   const pool = story.buildPool(boardStories, GAME.storyRateMult, [...heroSet]);
@@ -112,6 +113,7 @@ function startLevel(level, mode) {
   GAME.goalProgress = 0;
   GAME.floatTexts = [];
   GAME.particles = [];
+  GAME.voiceBanner = null;
   // 故事关开场剧情：普通模式故事关（非第 1 关，第 1 关留给新手引导）
   const showStory = mode === 'normal' && cfg.storyId && level !== 1 ? story.getStory(cfg.storyId) : null;
   GAME.storyIntro = showStory;
@@ -142,7 +144,7 @@ function onWin() {
     }
     // 解锁本关武将（收集）
     if (cfg.storyId) {
-      for (const name of heroes.heroesForStory(cfg.storyId)) save.heroes[name] = true;
+      for (const hero of heroes.heroesForStory(cfg.storyId)) save.heroes[hero.name] = true;
     }
   } else {
     save.eliteLevel = Math.max(save.eliteLevel, GAME.level + 1);
@@ -170,14 +172,16 @@ function resolvePhrase() {
   if (!hit) return;
   sound.phrase(); // 故事短语：五声音阶上行
   if (hit.heroId) {
-    // 武姓名触发作技能：飘字提示
+    // 武姓名触发：专属台词 + 专属音效 + 飘字
     const org = GAME.pendingPath[GAME.pendingPath.length - 1];
     pushFloat(hit.heroId, BOARD_X + (org.c + 0.5) * TILE, BOARD_Y + (org.r + 0.5) * TILE - 22, '#ff8f00', 24);
   }
   if (GAME.goalType === 'phrase') GAME.goalProgress += 1;
   const save = GAME.save;
   const awoken = save.unlocked[hit.storyId] && save.unlocked[hit.storyId].awakened;
-  const skillId = skills.getSkillId(hit.storyId, awoken);
+  // 武将触发用其独立技能，否则用故事技能
+  const hero = hit.heroId ? heroes.getHero(hit.heroId) : null;
+  const skillId = hero ? hero.skill : skills.getSkillId(hit.storyId, awoken);
   // 1) 划掉的短语字块先清空
   const grid = GAME.grid.map(row => row.slice());
   for (const cell of hit.cells) grid[cell.r][cell.c] = null;
@@ -190,7 +194,13 @@ function resolvePhrase() {
     origin: GAME.pendingPath[GAME.pendingPath.length - 1],
     storyId: hit.storyId,
   });
-  sound.skill(); // 技能触发音效
+  // 武将触发：显示专属台词横幅 + 播放专属音效；否则播通用技能音效
+  if (hero) {
+    GAME.voiceBanner = { text: hero.voice, t0: performance.now(), dur: 1600 };
+    sound.heroVoice(hero.name);
+  } else {
+    sound.skill(); // 技能触发音效
+  }
   GAME.grid = res.grid;
   GAME.score += res.score * scoreMult();
   applyBuffs(res);
@@ -898,6 +908,26 @@ function render() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(GAME.startBanner.text, W / 2, by2 + bh2 / 2);
+        ctx.globalAlpha = 1;
+      }
+    }
+    // 武将台词横幅（触发武将时显示专属台词）
+    if (GAME.voiceBanner) {
+      const p = (performance.now() - GAME.voiceBanner.t0) / GAME.voiceBanner.dur;
+      if (p >= 1) {
+        GAME.voiceBanner = null;
+      } else {
+        const alpha = p < 0.15 ? p / 0.15 : p < 0.8 ? 1 : (1 - p) / 0.2;
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        const bw2 = Math.min(W - 40, 340), bh2 = 58, bx2 = (W - bw2) / 2, by2 = H * 0.34;
+        roundRect(ctx, bx2, by2, bw2, bh2, 12);
+        ctx.fill();
+        ctx.fillStyle = '#ffca28';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(GAME.voiceBanner.text, W / 2, by2 + bh2 / 2);
         ctx.globalAlpha = 1;
       }
     }

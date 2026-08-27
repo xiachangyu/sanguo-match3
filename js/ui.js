@@ -558,7 +558,7 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   if (!s) return;
   ctx.fillStyle = 'rgba(20,25,20,0.86)';
   ctx.fillRect(0, 0, w, h);
-  const cw = Math.min(w - 40, 350), ch = 430;
+  const cw = Math.min(w - 40, 350), ch = 500;
   const cx = (w - cw) / 2, cy = Math.max(16, (h - ch) / 2 - 8);
   const g = ctx.createLinearGradient(0, cy, 0, cy + ch);
   g.addColorStop(0, '#f5eddc');
@@ -597,7 +597,7 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   } else {
     drawSkillRow(ctx, w, cx, cy + 250, cw, '觉醒技能', awk.name, '通关对应精英关解锁', '#8a8a8a');
   }
-  // 武将（收集：已招揽显示名字，未招揽显示 ???）
+  // 武将（收集 + 独立技能；每位一行，已招揽显示名字·技能，未招揽 ???）
   const hus = heroes.heroesForStory(storyId);
   if (hus.length) {
     ctx.textAlign = 'left';
@@ -605,13 +605,13 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
     ctx.font = 'bold 14px sans-serif';
     ctx.fillText('武将', cx + 22, cy + 316);
     ctx.font = '14px sans-serif';
-    let hx = cx + 22;
-    for (const name of hus) {
-      const got = save.heroes && save.heroes[name];
+    let hy = cy + 346;
+    for (const hero of hus) {
+      const got = save.heroes && save.heroes[hero.name];
+      const skill = skills.SKILL_INFO[hero.skill];
       ctx.fillStyle = got ? '#b23a2e' : '#b8ac94';
-      const label = got ? name : '???';
-      ctx.fillText(label, hx, cy + 344);
-      hx += ctx.measureText(label).width + 14;
+      ctx.fillText((got ? hero.name : '???') + ' · ' + (got ? (skill ? skill.name : '') : '待招揽'), cx + 22, hy);
+      hy += 26;
     }
   }
   // 提示
