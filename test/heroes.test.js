@@ -21,22 +21,37 @@ test('hero list is flattened with storyId and skill-word chars', () => {
   assert.deepStrictEqual(zhuge.chars, ['鞠', '躬', '尽', '瘁']);
 });
 
-test('matchHero matches skill-word set equality regardless of order', () => {
+test('matchHeroOrdered requires sequence (forward or reverse), rejects scrambled', () => {
   const liubei = heroes.HERO_LIST.find(h => h.id === '刘备');
-  assert.ok(heroes.matchHero(['天', '下', '仁', '德'], liubei));
-  assert.ok(!heroes.matchHero(['天', '下', '仁'], liubei)); // 长度不符
-  assert.ok(!heroes.matchHero(['天', '下', '仁', '义'], liubei));
+  assert.ok(heroes.matchHeroOrdered(['仁', '德', '天', '下'], liubei)); // 正序
+  assert.ok(heroes.matchHeroOrdered(['下', '天', '德', '仁'], liubei)); // 逆序
+  assert.ok(!heroes.matchHeroOrdered(['仁', '天', '德', '下'], liubei)); // 乱序
+  assert.ok(!heroes.matchHeroOrdered(['仁', '德', '天'], liubei)); // 长度不符
 });
 
-test('checkPhrasePath matches hero skill word (order-free straight line)', () => {
-  const grid = [
-    ['德', '天', '仁', '下'],
-  ];
-  const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }];
-  const res = story.checkPhrasePath(grid, path);
+test('checkPhrasePath matches hero skill word in order, rejects scrambled', () => {
+  // 正序
+  let grid = [['仁', '德', '天', '下']];
+  let path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }];
+  let res = story.checkPhrasePath(grid, path);
   assert.ok(res);
   assert.strictEqual(res.heroId, '刘备');
-  assert.strictEqual(res.storyId, 'taoyuan');
+  // 逆序（从右到左）
+  grid = [['下', '天', '德', '仁']];
+  res = story.checkPhrasePath(grid, path);
+  assert.ok(res);
+  assert.strictEqual(res.heroId, '刘备');
+  // 乱序（顺序被打乱）应不命中
+  grid = [['德', '天', '仁', '下']];
+  res = story.checkPhrasePath(grid, path);
+  assert.strictEqual(res, null);
+});
+
+test('every hero has an awakenedSkill that exists in SKILL_INFO', () => {
+  const skills = require('../js/skills');
+  for (const h of heroes.HERO_LIST) {
+    assert.ok(skills.SKILL_INFO[h.awakenedSkill], h.name + ' awakenedSkill ' + h.awakenedSkill + ' missing');
+  }
 });
 
 test('buildPool includes unlocked hero chars and keeps base weight', () => {

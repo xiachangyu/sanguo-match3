@@ -608,7 +608,8 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
     let hy = cy + 346;
     for (const hero of hus) {
       const got = save.heroes && save.heroes[hero.name];
-      const skill = skills.SKILL_INFO[hero.skill];
+      const aw = save.unlocked && save.unlocked[hero.storyId] && save.unlocked[hero.storyId].awakened;
+      const skill = skills.SKILL_INFO[aw ? hero.awakenedSkill : hero.skill];
       ctx.fillStyle = got ? '#b23a2e' : '#b8ac94';
       ctx.fillText((got ? hero.name + '·' + hero.skillWord : '???') + ' · ' + (got ? (skill ? skill.name : '') : '待招揽'), cx + 22, hy);
       hy += 26;

@@ -53,9 +53,9 @@ function checkPhrasePath(grid, path) {
       return { storyId: s.id, chars: s.chars.slice(), cells: path.slice() };
     }
   }
-  // 武将名（集合匹配，顺序不限；命中则归属其所属故事技能）
+  // 武将绝技词（须按顺序：正序或逆序，对应直线顺/逆行；故事短语保持集合匹配）
   for (const h of heroes.HERO_LIST) {
-    if (h.len === chars.length && h.chars.every(ch => set.has(ch))) {
+    if (heroes.matchHeroOrdered(chars, h)) {
       return { storyId: h.storyId, heroId: h.id, chars: h.chars.slice(), cells: path.slice() };
     }
   }
