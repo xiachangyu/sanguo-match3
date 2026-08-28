@@ -180,9 +180,11 @@ function resolvePhrase() {
   if (GAME.goalType === 'phrase') GAME.goalProgress += 1;
   const save = GAME.save;
   const awoken = save.unlocked[hit.storyId] && save.unlocked[hit.storyId].awakened;
-  // 武将触发：已觉醒用觉醒技能，否则用初始技能；故事用 story 技能
+  // 武将触发：已觉醒且按顺序划 → 觉醒技能；否则（未觉醒或乱序）→ 初始技能。故事用 story 技能。
   const hero = hit.heroId ? heroes.getHero(hit.heroId) : null;
-  const skillId = hero ? (awoken ? hero.awakenedSkill : hero.skill) : skills.getSkillId(hit.storyId, awoken);
+  const skillId = hero
+    ? (awoken && hit.heroOrdered ? hero.awakenedSkill : hero.skill)
+    : skills.getSkillId(hit.storyId, awoken);
   // 1) 划掉的短语字块先清空
   const grid = GAME.grid.map(row => row.slice());
   for (const cell of hit.cells) grid[cell.r][cell.c] = null;

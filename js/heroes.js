@@ -67,4 +67,11 @@ function matchHeroOrdered(chars, hero) {
   return direct || reversed;
 }
 
-module.exports = { HEROES, STORY_HEROES, HERO_LIST, getHero, heroesForStory, allHeroChars, matchHeroOrdered };
+// 判断路径字集合是否恰好==绝技词（不要求顺序，乱序也算命中）
+function matchHero(chars, hero) {
+  if (chars.length !== hero.len) return false;
+  const set = new Set(chars);
+  return hero.chars.every((ch) => set.has(ch));
+}
+
+module.exports = { HEROES, STORY_HEROES, HERO_LIST, getHero, heroesForStory, allHeroChars, matchHeroOrdered, matchHero };

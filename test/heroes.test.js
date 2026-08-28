@@ -29,21 +29,28 @@ test('matchHeroOrdered requires sequence (forward or reverse), rejects scrambled
   assert.ok(!heroes.matchHeroOrdered(['仁', '德', '天'], liubei)); // 长度不符
 });
 
-test('checkPhrasePath matches hero skill word in order, rejects scrambled', () => {
-  // 正序
+test('checkPhrasePath matches hero skill word; ordered flag true on order, false when scrambled', () => {
+  // 正序 → 命中且 ordered=true
   let grid = [['仁', '德', '天', '下']];
   let path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }];
   let res = story.checkPhrasePath(grid, path);
   assert.ok(res);
   assert.strictEqual(res.heroId, '刘备');
-  // 逆序（从右到左）
+  assert.strictEqual(res.heroOrdered, true);
+  // 逆序（从右到左）→ 也 ordered=true
   grid = [['下', '天', '德', '仁']];
   res = story.checkPhrasePath(grid, path);
   assert.ok(res);
-  assert.strictEqual(res.heroId, '刘备');
-  // 乱序（顺序被打乱）应不命中
+  assert.strictEqual(res.heroOrdered, true);
+  // 乱序 → 命中但 ordered=false（触发初始技能，而非不触发）
   grid = [['德', '天', '仁', '下']];
   res = story.checkPhrasePath(grid, path);
+  assert.ok(res);
+  assert.strictEqual(res.heroId, '刘备');
+  assert.strictEqual(res.heroOrdered, false);
+  // 少一个字 → 不命中
+  grid = [['仁', '德', '天']];
+  res = story.checkPhrasePath(grid, [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }]);
   assert.strictEqual(res, null);
 });
 

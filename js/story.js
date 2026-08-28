@@ -53,10 +53,10 @@ function checkPhrasePath(grid, path) {
       return { storyId: s.id, chars: s.chars.slice(), cells: path.slice() };
     }
   }
-  // 武将绝技词（须按顺序：正序或逆序，对应直线顺/逆行；故事短语保持集合匹配）
+  // 武将绝技词：字集合匹配即命中（乱序也认）；另标记是否按顺序（正/逆序），供上层决定觉醒/初始技能
   for (const h of heroes.HERO_LIST) {
-    if (heroes.matchHeroOrdered(chars, h)) {
-      return { storyId: h.storyId, heroId: h.id, chars: h.chars.slice(), cells: path.slice() };
+    if (h.len === chars.length && set.size === h.len && h.chars.every((ch) => set.has(ch))) {
+      return { storyId: h.storyId, heroId: h.id, chars: h.chars.slice(), cells: path.slice(), heroOrdered: heroes.matchHeroOrdered(chars, h) };
     }
   }
   return null;
