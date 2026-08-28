@@ -11,27 +11,28 @@ test('heroes data: every story maps to at least one hero', () => {
   }
 });
 
-test('hero list is flattened with storyId and chars', () => {
+test('hero list is flattened with storyId and skill-word chars', () => {
   const liubei = heroes.HERO_LIST.find(h => h.id === '刘备');
   assert.ok(liubei);
   assert.strictEqual(liubei.storyId, 'taoyuan');
-  assert.deepStrictEqual(liubei.chars, ['刘', '备']);
+  // 划线单位是绝技词（4字），而非 2 字名，避免太容易
+  assert.deepStrictEqual(liubei.chars, ['仁', '德', '天', '下']);
   const zhuge = heroes.HERO_LIST.find(h => h.id === '诸葛亮');
-  assert.deepStrictEqual(zhuge.chars, ['诸', '葛', '亮']);
+  assert.deepStrictEqual(zhuge.chars, ['鞠', '躬', '尽', '瘁']);
 });
 
-test('matchHero matches set equality regardless of order', () => {
+test('matchHero matches skill-word set equality regardless of order', () => {
   const liubei = heroes.HERO_LIST.find(h => h.id === '刘备');
-  assert.ok(heroes.matchHero(['备', '刘'], liubei));
-  assert.ok(!heroes.matchHero(['备', '关'], liubei));
-  assert.ok(!heroes.matchHero(['刘'], liubei)); // 长度不符
+  assert.ok(heroes.matchHero(['天', '下', '仁', '德'], liubei));
+  assert.ok(!heroes.matchHero(['天', '下', '仁'], liubei)); // 长度不符
+  assert.ok(!heroes.matchHero(['天', '下', '仁', '义'], liubei));
 });
 
-test('checkPhrasePath matches hero name (order-free straight line)', () => {
+test('checkPhrasePath matches hero skill word (order-free straight line)', () => {
   const grid = [
-    ['备', '刘'],
+    ['德', '天', '仁', '下'],
   ];
-  const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }];
+  const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }];
   const res = story.checkPhrasePath(grid, path);
   assert.ok(res);
   assert.strictEqual(res.heroId, '刘备');

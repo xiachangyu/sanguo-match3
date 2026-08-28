@@ -91,11 +91,11 @@ function startLevel(level, mode) {
   const required = cfg.storyId && save.unlocked[cfg.storyId] ? cfg.storyId : null;
   const boardStories = story.pickStoriesForBoard(unlocked, required);
   GAME.storyRateMult = cfg.goalType === 'phrase' ? config.PHRASE_STORY_MULT : 1; // 短语目标关提高故事字出现率
-  // 已解锁武将的名字单字作为盘面字块（去重）
+  // 已解锁武将的绝技词字块作为盘面字块（去重）
   const heroSet = new Set();
   for (const id of unlocked) {
     for (const hero of heroes.heroesForStory(id)) {
-      for (const ch of hero.name) heroSet.add(ch);
+      for (const ch of hero.chars) heroSet.add(ch);
     }
   }
   const pool = story.buildPool(boardStories, GAME.storyRateMult, [...heroSet]);
@@ -172,9 +172,10 @@ function resolvePhrase() {
   if (!hit) return;
   sound.phrase(); // 故事短语：五声音阶上行
   if (hit.heroId) {
-    // 武姓名触发：专属台词 + 专属音效 + 飘字
+    // 武姓名触发：专属台词 + 专属音效 + 飘字（显示绝技词）
     const org = GAME.pendingPath[GAME.pendingPath.length - 1];
-    pushFloat(hit.heroId, BOARD_X + (org.c + 0.5) * TILE, BOARD_Y + (org.r + 0.5) * TILE - 22, '#ff8f00', 24);
+    const hero = heroes.getHero(hit.heroId);
+    pushFloat(hero ? hero.skillWord : hit.heroId, BOARD_X + (org.c + 0.5) * TILE, BOARD_Y + (org.r + 0.5) * TILE - 22, '#ff8f00', 24);
   }
   if (GAME.goalType === 'phrase') GAME.goalProgress += 1;
   const save = GAME.save;

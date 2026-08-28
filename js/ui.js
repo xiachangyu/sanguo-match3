@@ -610,7 +610,7 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
       const got = save.heroes && save.heroes[hero.name];
       const skill = skills.SKILL_INFO[hero.skill];
       ctx.fillStyle = got ? '#b23a2e' : '#b8ac94';
-      ctx.fillText((got ? hero.name : '???') + ' · ' + (got ? (skill ? skill.name : '') : '待招揽'), cx + 22, hy);
+      ctx.fillText((got ? hero.name + '·' + hero.skillWord : '???') + ' · ' + (got ? (skill ? skill.name : '') : '待招揽'), cx + 22, hy);
       hy += 26;
     }
   }
