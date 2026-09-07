@@ -324,11 +324,12 @@ function drawLobby(ctx, w, h, state, enter = 1) {
     ctx.fillText(String(t), Math.max(bx + 10, Math.min(bx + bw - 10, x)), barY + 9 + 12);
   }
 
-  // 解锁预告小牌（下一个未解锁的故事，复用 levels.getUnlockPreview + story.getStory）
+  // 解锁预告小牌（下一个要解锁的武将；复用 levels.getUnlockPreview）
   const preview = levels.getUnlockPreview(state.currentLevel);
   if (preview) {
-    const st = story.getStory(preview.storyId);
-    const text = '下一关 · 第' + preview.level + '关解锁「' + (st ? st.name : preview.storyId) + '」';
+    const hus = heroes.heroesForStory(preview.storyId);
+    const names = hus.map(h => h.name).join('、');
+    const text = '下一关 · 第' + preview.level + '关解锁「' + (names || '新武将') + '」';
     const py = barY + 34;
     ctx.fillStyle = '#fffdf6';
     roundRect(ctx, bx, py, bw, 32, 5);
@@ -551,24 +552,25 @@ function drawCodex(ctx, w, h, save) {
   }
 }
 
-// 图鉴详情弹层：故事名 / intro / 字块 / 初始技能 / 觉醒技能 / 武将（动态、均匀布局）
+// 图鉴详情弹层：以武将及其技能为主体（故事名仅为关卡背景），下方为故事的初始/觉醒技能（保留故事短语玩法）
 function drawCodexDetail(ctx, w, h, storyId, save) {
   const s = story.getStory(storyId);
   const unlocked = save.unlocked[storyId];
   if (!s) return;
   const hus = heroes.heroesForStory(storyId);
   // 相对卡片顶的 Y（先算好，后据此定卡片高度）
-  const pad = 34;
-  const titleY = pad + 16;
-  const introY = titleY + 46;
-  const tilesY = introY + 46;
-  const sepY = tilesY + 58;
-  const skill0Y = sepY + 22;
-  const skill1Y = skill0Y + 86;
-  const heroLabelY = skill1Y + 86;
-  const hero0Y = heroLabelY + 26;
-  const heroEnd = hero0Y + hus.length * 26;
-  const hintY = heroEnd + 30;
+  const pad = 32;
+  const titleY = pad + 14;          // 故事名（小标题/背景）
+  const introY = titleY + 32;
+  const tilesY = introY + 40;
+  const sepY = tilesY + 52;
+  const heroLabelY = sepY + 20;     // 「武将」
+  const hero0Y = heroLabelY + 28;
+  const heroEnd = hero0Y + hus.length * 30;
+  const sep2Y = heroEnd + 14;
+  const skill0Y = sep2Y + 22;       // 故事初始技能
+  const skill1Y = skill0Y + 84;     // 故事觉醒技能
+  const hintY = skill1Y + 84;
   const ch = Math.min(h - 24, hintY + pad);
   const cy = Math.max(12, (h - ch) / 2 - 6);
   const cw = Math.min(w - 40, 350);
@@ -588,16 +590,16 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   ctx.stroke();
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
-  // 故事名
-  ctx.fillStyle = '#b23a2e';
-  ctx.font = 'bold 24px sans-serif';
+  // 故事名（小标题）
+  ctx.fillStyle = '#8a6d3b';
+  ctx.font = 'bold 18px sans-serif';
   ctx.fillText(s.name, w / 2, cy + titleY);
   // intro
-  ctx.fillStyle = '#4a4a44';
-  ctx.font = '15px sans-serif';
+  ctx.fillStyle = '#6b6a60';
+  ctx.font = '13px sans-serif';
   ctx.fillText(s.intro, w / 2, cy + introY);
   // 字块预览
-  const size = 42, gap = 8;
+  const size = 40, gap = 8;
   const total = s.chars.length * size + (s.chars.length - 1) * gap;
   let tx0 = w / 2 - total / 2;
   for (const ch of s.chars) {
@@ -611,31 +613,45 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   ctx.moveTo(cx + 24, cy + sepY);
   ctx.lineTo(cx + cw - 24, cy + sepY);
   ctx.stroke();
-  // 初始技能
+  // 武将为主体：每位一行「名字 · 绝技词 · 技能名」（未招揽 ??? · 待招揽）
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#4a4a44';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillText('武将技能', cx + 22, cy + heroLabelY);
+  let hy = cy + hero0Y;
+  for (const hero of hus) {
+    const got = save.heroes && save.heroes[hero.name];
+    const aw = save.unlocked && save.unlocked[hero.storyId] && save.unlocked[hero.storyId].awakened;
+    const skill = skills.SKILL_INFO[aw ? hero.awakenedSkill : hero.skill];
+    if (got) {
+      ctx.fillStyle = '#b23a2e';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(hero.name, cx + 24, hy);
+      ctx.fillStyle = '#8a6d3b';
+      ctx.font = '14px sans-serif';
+      ctx.fillText('· ' + hero.skillWord, cx + 24 + ctx.measureText(hero.name).width + 6, hy);
+      ctx.fillStyle = aw ? '#b23a2e' : '#2e7d32';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('· ' + (skill ? skill.name : ''), cx + 24 + ctx.measureText(hero.name + ' · ' + hero.skillWord).width + 10, hy);
+    } else {
+      ctx.fillStyle = '#b8ac94';
+      ctx.font = '15px sans-serif';
+      ctx.fillText('??? · 待招揽', cx + 24, hy);
+    }
+    hy += 30;
+  }
+  // 分隔线
+  ctx.strokeStyle = 'rgba(154,146,126,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(cx + 24, cy + sep2Y);
+  ctx.lineTo(cx + cw - 24, cy + sep2Y);
+  ctx.stroke();
+  // 故事的初始技能 / 觉醒技能（保留故事短语的背景）
   const ini = skills.SKILL_INFO[s.initialSkill];
   const awk = skills.SKILL_INFO[s.awakenedSkill];
-  drawSkillBlock(ctx, cx, cy + skill0Y, cw, '初始技能', ini.name, ini.desc, '#2e7d32');
-  // 觉醒技能
+  drawSkillBlock(ctx, cx, cy + skill0Y, cw, '故事·初始技能', ini.name, ini.desc, '#2e7d32');
   const awakened = unlocked && unlocked.awakened;
-  drawSkillBlock(ctx, cx, cy + skill1Y, cw, '觉醒技能', awk.name, awakened ? awk.desc : '通关对应精英关解锁', awakened ? '#b23a2e' : '#8a8a8a');
-  // 武将（收集 + 独立技能；每位一行，已招揽显示名字·绝技词·技能，未招揽 ???·待招揽）
-  if (hus.length) {
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#8a6d3b';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText('武将', cx + 22, cy + heroLabelY);
-    ctx.font = '14px sans-serif';
-    let hy = cy + hero0Y;
-    for (const hero of hus) {
-      const got = save.heroes && save.heroes[hero.name];
-      const aw = save.unlocked && save.unlocked[hero.storyId] && save.unlocked[hero.storyId].awakened;
-      const skill = skills.SKILL_INFO[aw ? hero.awakenedSkill : hero.skill];
-      ctx.fillStyle = got ? '#b23a2e' : '#b8ac94';
-      const label = (got ? hero.name + '·' + hero.skillWord : '???') + ' · ' + (got ? (skill ? skill.name : '') : '待招揽');
-      ctx.fillText(label, cx + 22, hy);
-      hy += 26;
-    }
-  }
+  drawSkillBlock(ctx, cx, cy + skill1Y, cw, '故事·觉醒技能', awk.name, awakened ? awk.desc : '通关对应精英关解锁', awakened ? '#b23a2e' : '#8a8a8a');
   // 提示
   ctx.fillStyle = '#5a5240';
   ctx.font = '14px sans-serif';
@@ -646,7 +662,7 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
 function drawSkillBlock(ctx, cx, y, cw, label, name, desc, color) {
   ctx.textAlign = 'left';
   ctx.fillStyle = color;
-  ctx.font = 'bold 15px sans-serif';
+  ctx.font = 'bold 14px sans-serif';
   ctx.fillText(label, cx + 22, y);
   ctx.fillStyle = '#4a4a44';
   ctx.font = 'bold 16px sans-serif';
