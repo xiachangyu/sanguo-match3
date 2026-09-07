@@ -551,15 +551,32 @@ function drawCodex(ctx, w, h, save) {
   }
 }
 
-// 图鉴详情弹层：故事名 / intro / 字块 / 初始技能 / 觉醒技能
+// 图鉴详情弹层：故事名 / intro / 字块 / 初始技能 / 觉醒技能 / 武将（动态、均匀布局）
 function drawCodexDetail(ctx, w, h, storyId, save) {
   const s = story.getStory(storyId);
   const unlocked = save.unlocked[storyId];
   if (!s) return;
+  const hus = heroes.heroesForStory(storyId);
+  // 相对卡片顶的 Y（先算好，后据此定卡片高度）
+  const pad = 34;
+  const titleY = pad + 16;
+  const introY = titleY + 46;
+  const tilesY = introY + 46;
+  const sepY = tilesY + 58;
+  const skill0Y = sepY + 22;
+  const skill1Y = skill0Y + 86;
+  const heroLabelY = skill1Y + 86;
+  const hero0Y = heroLabelY + 26;
+  const heroEnd = hero0Y + hus.length * 26;
+  const hintY = heroEnd + 30;
+  const ch = Math.min(h - 24, hintY + pad);
+  const cy = Math.max(12, (h - ch) / 2 - 6);
+  const cw = Math.min(w - 40, 350);
+  const cx = (w - cw) / 2;
+  // 遮罩
   ctx.fillStyle = 'rgba(20,25,20,0.86)';
   ctx.fillRect(0, 0, w, h);
-  const cw = Math.min(w - 40, 350), ch = 500;
-  const cx = (w - cw) / 2, cy = Math.max(16, (h - ch) / 2 - 8);
+  // 卡片
   const g = ctx.createLinearGradient(0, cy, 0, cy + ch);
   g.addColorStop(0, '#f5eddc');
   g.addColorStop(1, '#efe2c8');
@@ -569,49 +586,53 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   ctx.strokeStyle = '#c9b896';
   ctx.lineWidth = 1;
   ctx.stroke();
-  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
   // 故事名
   ctx.fillStyle = '#b23a2e';
-  ctx.font = 'bold 26px sans-serif';
-  ctx.fillText(s.name, w / 2, cy + 40);
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText(s.name, w / 2, cy + titleY);
   // intro
   ctx.fillStyle = '#4a4a44';
   ctx.font = '15px sans-serif';
-  ctx.fillText(s.intro, w / 2, cy + 78);
+  ctx.fillText(s.intro, w / 2, cy + introY);
   // 字块预览
-  const size = 44, gap = 8;
+  const size = 42, gap = 8;
   const total = s.chars.length * size + (s.chars.length - 1) * gap;
   let tx0 = w / 2 - total / 2;
-  const ty = cy + 114;
   for (const ch of s.chars) {
-    drawTile(ctx, tx0, ty, size, ch);
+    drawTile(ctx, tx0, cy + tilesY, size, ch);
     tx0 += size + gap;
   }
-  // 技能
+  // 分隔线
+  ctx.strokeStyle = 'rgba(154,146,126,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx + 24, cy + sepY);
+  ctx.lineTo(cx + cw - 24, cy + sepY);
+  ctx.stroke();
+  // 初始技能
   const ini = skills.SKILL_INFO[s.initialSkill];
   const awk = skills.SKILL_INFO[s.awakenedSkill];
-  drawSkillRow(ctx, w, cx, cy + 190, cw, '初始技能', ini.name, ini.desc, '#2e7d32');
-  if (unlocked && unlocked.awakened) {
-    drawSkillRow(ctx, w, cx, cy + 250, cw, '觉醒技能', awk.name, awk.desc, '#b23a2e');
-  } else {
-    drawSkillRow(ctx, w, cx, cy + 250, cw, '觉醒技能', awk.name, '通关对应精英关解锁', '#8a8a8a');
-  }
-  // 武将（收集 + 独立技能；每位一行，已招揽显示名字·技能，未招揽 ???）
-  const hus = heroes.heroesForStory(storyId);
+  drawSkillBlock(ctx, cx, cy + skill0Y, cw, '初始技能', ini.name, ini.desc, '#2e7d32');
+  // 觉醒技能
+  const awakened = unlocked && unlocked.awakened;
+  drawSkillBlock(ctx, cx, cy + skill1Y, cw, '觉醒技能', awk.name, awakened ? awk.desc : '通关对应精英关解锁', awakened ? '#b23a2e' : '#8a8a8a');
+  // 武将（收集 + 独立技能；每位一行，已招揽显示名字·绝技词·技能，未招揽 ???·待招揽）
   if (hus.length) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#8a6d3b';
     ctx.font = 'bold 14px sans-serif';
-    ctx.fillText('武将', cx + 22, cy + 316);
+    ctx.fillText('武将', cx + 22, cy + heroLabelY);
     ctx.font = '14px sans-serif';
-    let hy = cy + 346;
+    let hy = cy + hero0Y;
     for (const hero of hus) {
       const got = save.heroes && save.heroes[hero.name];
       const aw = save.unlocked && save.unlocked[hero.storyId] && save.unlocked[hero.storyId].awakened;
       const skill = skills.SKILL_INFO[aw ? hero.awakenedSkill : hero.skill];
       ctx.fillStyle = got ? '#b23a2e' : '#b8ac94';
-      ctx.fillText((got ? hero.name + '·' + hero.skillWord : '???') + ' · ' + (got ? (skill ? skill.name : '') : '待招揽'), cx + 22, hy);
+      const label = (got ? hero.name + '·' + hero.skillWord : '???') + ' · ' + (got ? (skill ? skill.name : '') : '待招揽');
+      ctx.fillText(label, cx + 22, hy);
       hy += 26;
     }
   }
@@ -619,10 +640,10 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   ctx.fillStyle = '#5a5240';
   ctx.font = '14px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('点击任意处返回', w / 2, cy + ch - 26);
+  ctx.fillText('点击任意处返回', w / 2, cy + hintY);
 }
 
-function drawSkillRow(ctx, w, cx, y, cw, label, name, desc, color) {
+function drawSkillBlock(ctx, cx, y, cw, label, name, desc, color) {
   ctx.textAlign = 'left';
   ctx.fillStyle = color;
   ctx.font = 'bold 15px sans-serif';
