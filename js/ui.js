@@ -621,7 +621,7 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
     const aw = save.unlocked && save.unlocked[hero.storyId] && save.unlocked[hero.storyId].awakened;
     const iniSkill = skills.SKILL_INFO[hero.skill];
     const awkSkill = skills.SKILL_INFO[hero.awakenedSkill];
-    // 行1：名字 · 绝技词 + [已招募/待招募]
+    // 行1：名字 · 绝技词 + 招募状态（已招募 / 通关第N关招募）
     ctx.fillStyle = got ? '#b23a2e' : '#8a8a8a';
     ctx.font = 'bold 16px sans-serif';
     ctx.fillText(hero.name, cx + 24, hy);
@@ -631,8 +631,10 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
     ctx.fillText('· ' + hero.skillWord, cx + 24 + nw + 6, hy);
     const swW = ctx.measureText('· ' + hero.skillWord).width;
     ctx.font = '12px sans-serif';
+    const lv = levels.UNLOCK.find(u => u.storyId === hero.storyId);
     ctx.fillStyle = got ? '#2e7d32' : '#b8ac94';
-    ctx.fillText(got ? '已招募' : '待招募', cx + 24 + nw + 6 + swW + 18, hy);
+    const rLabel = got ? '已招募' : (lv ? '通关第' + lv.level + '关招募' : '待招募');
+    ctx.fillText(rLabel, cx + 24 + nw + 6 + swW + 18, hy);
     // 行2：初始 / 觉醒 技能（与对局一致：乱序→初始，按顺序+已觉醒→觉醒）
     ctx.fillStyle = '#6b6a60';
     ctx.font = '13px sans-serif';
