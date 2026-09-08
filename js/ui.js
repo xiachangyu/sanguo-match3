@@ -566,7 +566,7 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   const sepY = tilesY + 52;
   const heroLabelY = sepY + 20;     // 「武将」
   const hero0Y = heroLabelY + 28;
-  const heroEnd = hero0Y + hus.length * 30;
+  const heroEnd = hero0Y + hus.length * 52;
   const sep2Y = heroEnd + 14;
   const skill0Y = sep2Y + 22;       // 故事初始技能
   const skill1Y = skill0Y + 84;     // 故事觉醒技能
@@ -622,23 +622,29 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   for (const hero of hus) {
     const got = save.heroes && save.heroes[hero.name];
     const aw = save.unlocked && save.unlocked[hero.storyId] && save.unlocked[hero.storyId].awakened;
-    const skill = skills.SKILL_INFO[aw ? hero.awakenedSkill : hero.skill];
     if (got) {
+      // 行1：名字 · 绝技词
       ctx.fillStyle = '#b23a2e';
       ctx.font = 'bold 16px sans-serif';
       ctx.fillText(hero.name, cx + 24, hy);
+      const nw = ctx.measureText(hero.name).width;
       ctx.fillStyle = '#8a6d3b';
       ctx.font = '14px sans-serif';
-      ctx.fillText('· ' + hero.skillWord, cx + 24 + ctx.measureText(hero.name).width + 6, hy);
-      ctx.fillStyle = aw ? '#b23a2e' : '#2e7d32';
+      ctx.fillText('· ' + hero.skillWord, cx + 24 + nw + 6, hy);
+      // 行2：初始 / 觉醒 技能（与对局触发规则一致：乱序→初始，按顺序+已觉醒→觉醒）
+      const iniSkill = skills.SKILL_INFO[hero.skill];
+      const awkSkill = skills.SKILL_INFO[hero.awakenedSkill];
+      ctx.fillStyle = '#6b6a60';
       ctx.font = '13px sans-serif';
-      ctx.fillText('· ' + (skill ? skill.name : ''), cx + 24 + ctx.measureText(hero.name + ' · ' + hero.skillWord).width + 10, hy);
+      ctx.fillText('初始 ' + (iniSkill ? iniSkill.name : ''), cx + 24, hy + 26);
+      ctx.fillStyle = aw ? '#b23a2e' : '#b8ac94';
+      ctx.fillText('觉醒 ' + (awkSkill ? awkSkill.name : ''), cx + 24 + 6 + ctx.measureText('初始 ' + (iniSkill ? iniSkill.name : '')).width + 18, hy + 26);
     } else {
       ctx.fillStyle = '#b8ac94';
       ctx.font = '15px sans-serif';
       ctx.fillText('??? · 待招揽', cx + 24, hy);
     }
-    hy += 30;
+    hy += 52;
   }
   // 分隔线
   ctx.strokeStyle = 'rgba(154,146,126,0.4)';
