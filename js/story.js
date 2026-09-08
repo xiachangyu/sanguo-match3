@@ -45,15 +45,10 @@ function checkPhrasePath(grid, path) {
   const sameRow = path.every(p => p.r === path[0].r);
   const sameCol = path.every(p => p.c === path[0].c);
   if (!sameRow && !sameCol) return null;
-  // 不要求顺序：路径字块集合 == 故事字块集合（故事内无重复字，长度相等 + 全部包含即集合相等）
+  // 只匹配武将绝技词（不再有故事短语字块）：字集合匹配即命中（乱序也认），
+  // 另标记是否按顺序（正/逆序），供上层决定觉醒/初始技能
   const chars = path.map(p => chOf(grid[p.r][p.c]));
   const set = new Set(chars);
-  for (const s of Object.values(STORIES)) {
-    if (s.chars.length === chars.length && s.chars.every(ch => set.has(ch))) {
-      return { storyId: s.id, chars: s.chars.slice(), cells: path.slice() };
-    }
-  }
-  // 武将绝技词：字集合匹配即命中（乱序也认）；另标记是否按顺序（正/逆序），供上层决定觉醒/初始技能
   for (const h of heroes.HERO_LIST) {
     if (h.len === chars.length && set.size === h.len && h.chars.every((ch) => set.has(ch))) {
       return { storyId: h.storyId, heroId: h.id, chars: h.chars.slice(), cells: path.slice(), heroOrdered: heroes.matchHeroOrdered(chars, h) };
@@ -78,18 +73,11 @@ function pickStoriesForBoard(unlockedIds, requiredStoryId) {
   return picked;
 }
 
-// 构造本盘字池：基础字高权重 + 上场故事字低权重 + 已解锁武将字低权重
+// 构造本盘字池：基础字高权重 + 已解锁武将绝技词字低权重（不含故事短语字）
 function buildPool(boardStories, storyRateMult = 1, heroChars = []) {
   const pool = {};
   for (const ch of config.BASE_TILES) pool[ch] = config.BASE_WEIGHT;
-  for (const id of boardStories) {
-    const s = STORIES[id];
-    if (!s) continue;
-    for (const ch of s.chars) {
-      pool[ch] = Math.round(config.STORY_WEIGHT * storyRateMult);
-    }
-  }
-  // 武将字：解锁该武将后其名字单字入池（不与故事字冲突，取较大权重）
+  // 武将字：解锁该武将后其绝技词单字入池
   for (const ch of heroChars) {
     pool[ch] = Math.max(pool[ch] || 0, config.HERO_WEIGHT);
   }

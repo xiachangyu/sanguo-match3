@@ -8,29 +8,21 @@ test('story data has 12 stories with unlock order', () => {
   assert.deepStrictEqual(story.STORIES.taoyuan.chars, ['桃', '园', '三', '结', '义']);
 });
 
-test('checkPhrasePath matches story chars in any order on a straight line', () => {
-  // 一行 5 格，逆序排列「桃园三结义」→ 不要求顺序，仍命中 taoyuan
+test('checkPhrasePath no longer matches story phrases, only hero skill words', () => {
+  // 桃园三结义故事短语字不再作为划线命中（字池已不含故事字）
   const grid = [
-    ['义', '结', '三', '园', '桃'],
+    ['桃', '园', '三', '结', '义'],
   ];
   const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }, { r: 0, c: 4 }];
-  const res = story.checkPhrasePath(grid, path);
-  assert.ok(res);
-  assert.strictEqual(res.storyId, 'taoyuan');
-});
-
-test('checkPhrasePath matches correct order and vertical line too', () => {
-  const grid = [
-    ['桃'],
-    ['园'],
-    ['三'],
-    ['结'],
-    ['义'],
+  assert.strictEqual(story.checkPhrasePath(grid, path), null);
+  // 武将绝技词（刘备·仁德天下）仍命中
+  const g2 = [
+    ['仁', '德', '天', '下'],
   ];
-  const path = [{ r: 0, c: 0 }, { r: 1, c: 0 }, { r: 2, c: 0 }, { r: 3, c: 0 }, { r: 4, c: 0 }];
-  const res = story.checkPhrasePath(grid, path);
+  const res = story.checkPhrasePath(g2, path.slice(0, 4));
   assert.ok(res);
-  assert.strictEqual(res.storyId, 'taoyuan');
+  assert.strictEqual(res.heroId, '刘备');
+  assert.strictEqual(res.heroOrdered, true);
 });
 
 test('checkPhrasePath rejects L-shaped (non-straight) path', () => {
@@ -60,16 +52,17 @@ test('pickStoriesForBoard includes required story', () => {
   }
 });
 
-test('buildPool weights base high and story low', () => {
+test('buildPool keeps base weight and excludes story-phrase tiles', () => {
   const pool = story.buildPool(['taoyuan'], 1);
   assert.strictEqual(pool['兵'], 100);
-  assert.strictEqual(pool['桃'], 15);
   assert.strictEqual(pool['弓'], 100);
+  assert.strictEqual(pool['桃'], undefined); // 字池不含故事短语字
 });
 
-test('buildPool respects storyRateMult', () => {
-  const pool = story.buildPool(['taoyuan'], 2);
-  assert.strictEqual(pool['桃'], 30);
+test('buildPool includes hero skill-word chars', () => {
+  const pool = story.buildPool(['taoyuan'], 1, ['仁', '德', '天', '下']);
+  assert.strictEqual(pool['仁'], require('../js/config').HERO_WEIGHT);
+  assert.strictEqual(pool['兵'], 100);
 });
 
 test('isStoryChar works', () => {

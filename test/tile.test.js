@@ -44,10 +44,10 @@ test('match3 hasValidMove works with object tiles', () => {
 
 test('story phrase path reads char from object tiles', () => {
   const grid = [
-    ['义', '结', tile.tile('三', 'row'), '园', '桃'],
+    ['仁', '德', tile.tile('天', 'row'), '下'],
   ];
-  const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }, { r: 0, c: 4 }];
+  const path = [{ r: 0, c: 0 }, { r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 3 }];
   const res = story.checkPhrasePath(grid, path);
   assert.ok(res);
-  assert.strictEqual(res.storyId, 'taoyuan');
+  assert.strictEqual(res.heroId, '刘备');
 });
