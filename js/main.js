@@ -452,12 +452,13 @@ function onTap(tx, ty) {
     }
     const idx = ui.codexCardAt(tx, ty, layout);
     if (idx >= 0) {
-      const storyId = levels.UNLOCK[idx].storyId;
-      if (GAME.save.unlocked[storyId]) {
+      const hero = heroes.HERO_LIST[idx];
+      if (GAME.save.heroes && GAME.save.heroes[hero.name]) {
         sound.tap();
-        GAME.codexOpen = storyId;
+        GAME.codexOpen = hero.name; // 打开武将详情
       } else {
-        showToast('尚未解锁 · 通关第 ' + levels.UNLOCK[idx].level + ' 关解锁');
+        const lv = levels.UNLOCK.find(u => u.storyId === hero.storyId);
+        showToast('通关第 ' + (lv ? lv.level : '?') + ' 关招募 ' + hero.name);
       }
     }
     return;
