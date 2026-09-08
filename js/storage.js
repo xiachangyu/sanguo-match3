@@ -1,6 +1,7 @@
 const config = require('./config');
 
-const KEY = 'sanguo_match3_save_v1';
+// 存档 key：v2 因「每关解锁 1 个武将」改动重置旧存档（v1 曾一次解锁多武将）
+const KEY = 'sanguo_match3_save_v2';
 
 function today() {
   const d = new Date();
