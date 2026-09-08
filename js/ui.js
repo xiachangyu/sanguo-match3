@@ -567,10 +567,7 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   const heroLabelY = sepY + 20;     // 「武将」
   const hero0Y = heroLabelY + 28;
   const heroEnd = hero0Y + hus.length * 52;
-  const sep2Y = heroEnd + 14;
-  const skill0Y = sep2Y + 22;       // 故事初始技能
-  const skill1Y = skill0Y + 84;     // 故事觉醒技能
-  const hintY = skill1Y + 84;
+  const hintY = heroEnd + 30;
   const ch = Math.min(h - 24, hintY + pad);
   const cy = Math.max(12, (h - ch) / 2 - 6);
   const cw = Math.min(w - 40, 350);
@@ -622,60 +619,34 @@ function drawCodexDetail(ctx, w, h, storyId, save) {
   for (const hero of hus) {
     const got = save.heroes && save.heroes[hero.name];
     const aw = save.unlocked && save.unlocked[hero.storyId] && save.unlocked[hero.storyId].awakened;
-    if (got) {
-      // 行1：名字 · 绝技词
-      ctx.fillStyle = '#b23a2e';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillText(hero.name, cx + 24, hy);
-      const nw = ctx.measureText(hero.name).width;
-      ctx.fillStyle = '#8a6d3b';
-      ctx.font = '14px sans-serif';
-      ctx.fillText('· ' + hero.skillWord, cx + 24 + nw + 6, hy);
-      // 行2：初始 / 觉醒 技能（与对局触发规则一致：乱序→初始，按顺序+已觉醒→觉醒）
-      const iniSkill = skills.SKILL_INFO[hero.skill];
-      const awkSkill = skills.SKILL_INFO[hero.awakenedSkill];
-      ctx.fillStyle = '#6b6a60';
-      ctx.font = '13px sans-serif';
-      ctx.fillText('初始 ' + (iniSkill ? iniSkill.name : ''), cx + 24, hy + 26);
-      ctx.fillStyle = aw ? '#b23a2e' : '#b8ac94';
-      ctx.fillText('觉醒 ' + (awkSkill ? awkSkill.name : ''), cx + 24 + 6 + ctx.measureText('初始 ' + (iniSkill ? iniSkill.name : '')).width + 18, hy + 26);
-    } else {
-      ctx.fillStyle = '#b8ac94';
-      ctx.font = '15px sans-serif';
-      ctx.fillText('??? · 待招揽', cx + 24, hy);
-    }
+    const iniSkill = skills.SKILL_INFO[hero.skill];
+    const awkSkill = skills.SKILL_INFO[hero.awakenedSkill];
+    // 行1：名字 · 绝技词 + [已招募/待招募]
+    ctx.fillStyle = got ? '#b23a2e' : '#8a8a8a';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(hero.name, cx + 24, hy);
+    const nw = ctx.measureText(hero.name).width;
+    ctx.fillStyle = got ? '#8a6d3b' : '#b8ac94';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('· ' + hero.skillWord, cx + 24 + nw + 6, hy);
+    const swW = ctx.measureText('· ' + hero.skillWord).width;
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = got ? '#2e7d32' : '#b8ac94';
+    ctx.fillText(got ? '已招募' : '待招募', cx + 24 + nw + 6 + swW + 18, hy);
+    // 行2：初始 / 觉醒 技能（与对局一致：乱序→初始，按顺序+已觉醒→觉醒）
+    ctx.fillStyle = '#6b6a60';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('初始 ' + (iniSkill ? iniSkill.name : ''), cx + 24, hy + 26);
+    ctx.fillStyle = aw ? '#b23a2e' : '#b8ac94';
+    const iniW = ctx.measureText('初始 ' + (iniSkill ? iniSkill.name : '')).width;
+    ctx.fillText('觉醒 ' + (awkSkill ? awkSkill.name : ''), cx + 24 + iniW + 18, hy + 26);
     hy += 52;
   }
-  // 分隔线
-  ctx.strokeStyle = 'rgba(154,146,126,0.4)';
-  ctx.beginPath();
-  ctx.moveTo(cx + 24, cy + sep2Y);
-  ctx.lineTo(cx + cw - 24, cy + sep2Y);
-  ctx.stroke();
-  // 故事的初始技能 / 觉醒技能（保留故事短语的背景）
-  const ini = skills.SKILL_INFO[s.initialSkill];
-  const awk = skills.SKILL_INFO[s.awakenedSkill];
-  drawSkillBlock(ctx, cx, cy + skill0Y, cw, '故事·初始技能', ini.name, ini.desc, '#2e7d32');
-  const awakened = unlocked && unlocked.awakened;
-  drawSkillBlock(ctx, cx, cy + skill1Y, cw, '故事·觉醒技能', awk.name, awakened ? awk.desc : '通关对应精英关解锁', awakened ? '#b23a2e' : '#8a8a8a');
   // 提示
   ctx.fillStyle = '#5a5240';
   ctx.font = '14px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('点击任意处返回', w / 2, cy + hintY);
-}
-
-function drawSkillBlock(ctx, cx, y, cw, label, name, desc, color) {
-  ctx.textAlign = 'left';
-  ctx.fillStyle = color;
-  ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(label, cx + 22, y);
-  ctx.fillStyle = '#4a4a44';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(name, cx + 22, y + 28);
-  ctx.fillStyle = '#6b6a60';
-  ctx.font = '13px sans-serif';
-  ctx.fillText(desc, cx + 22, y + 52);
 }
 
 // 结算
