@@ -91,12 +91,27 @@ function startLevel(level, mode) {
   const required = cfg.storyId && save.unlocked[cfg.storyId] ? cfg.storyId : null;
   const boardStories = story.pickStoriesForBoard(unlocked, required);
   GAME.storyRateMult = cfg.goalType === 'phrase' ? config.PHRASE_STORY_MULT : 1; // 短语目标关提高故事字出现率
-  // 已解锁武将的绝技词字块作为盘面字块（去重）
+  // 已解锁武将：每局随机挑 few 个上场（其绝技词字块进本局盘面），故事关保证当前关武将上场
   const heroSet = new Set();
-  for (const id of unlocked) {
-    for (const hero of heroes.heroesForStory(id)) {
-      for (const ch of hero.chars) heroSet.add(ch);
+  {
+    const seen = new Set();
+    const avail = [];
+    for (const id of unlocked) {
+      for (const hero of heroes.heroesForStory(id)) {
+        if (!seen.has(hero.name)) { seen.add(hero.name); avail.push(hero); }
+      }
     }
+    const requiredNames = new Set((cfg.storyId ? heroes.heroesForStory(cfg.storyId) : []).map(h => h.name));
+    const must = avail.filter(h => requiredNames.has(h.name));
+    const rest = avail.filter(h => !requiredNames.has(h.name));
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+    const picked = must.slice();
+    const max = config.HEROS_PER_BOARD_MAX;
+    while (picked.length < max && rest.length) picked.push(rest.pop());
+    for (const h of picked) for (const ch of h.chars) heroSet.add(ch);
   }
   const pool = story.buildPool(boardStories, GAME.storyRateMult, [...heroSet]);
   GAME.level = level;
