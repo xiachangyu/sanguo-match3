@@ -264,7 +264,7 @@ function checkGoal() {
 // 当前目标文案（结算界面复用）
 function goalText() {
   if (GAME.goalType === 'collect') return '收集「' + GAME.goalChar + '」 ' + GAME.goalProgress + '/' + GAME.goalCount;
-  if (GAME.goalType === 'phrase') return '故事短语 ' + GAME.goalProgress + '/' + GAME.goalCount;
+  if (GAME.goalType === 'phrase') return '武将技 ' + GAME.goalProgress + '/' + GAME.goalCount;
   return '得分 ' + GAME.score + ' / ' + GAME.target;
 }
 
@@ -272,7 +272,7 @@ function goalText() {
 function bannerText(cfg) {
   const lv = (cfg.mode === 'elite' ? '精英 ' : '') + '第' + cfg.level + '关';
   if (cfg.goalType === 'collect') return lv + ' · 收集「' + cfg.goalChar + '」' + cfg.goalCount;
-  if (cfg.goalType === 'phrase') return lv + ' · 触发故事短语 ' + cfg.goalCount + ' 次';
+  if (cfg.goalType === 'phrase') return lv + ' · 触发武将技 ' + cfg.goalCount + ' 次';
   return lv + ' · 目标 ' + cfg.targetScore + ' 分';
 }
 

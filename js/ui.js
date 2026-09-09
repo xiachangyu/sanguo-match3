@@ -100,7 +100,7 @@ function drawHUD(ctx, opts, w) {
   if (opts.goalType === 'collect') {
     ctx.fillText('收集「' + opts.goalChar + '」 ' + opts.goalProgress + '/' + opts.goalCount, w / 2, 34);
   } else if (opts.goalType === 'phrase') {
-    ctx.fillText('短语 ' + opts.goalProgress + '/' + opts.goalCount, w / 2, 34);
+    ctx.fillText('武将技 ' + opts.goalProgress + '/' + opts.goalCount, w / 2, 34);
   } else {
     ctx.fillText('目标 ' + opts.targetScore, w / 2, 34);
   }
